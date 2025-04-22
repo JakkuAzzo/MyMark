@@ -1,0 +1,14 @@
+nav button[data-v-967bb0] {
+  cursor: pointer;
+  background: #f8f8f8;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  margin-right: 1rem;
+  padding: .5rem 1rem;
+  font-size: 1rem;
+}
+
+nav button[data-v-967bb0]:hover {
+  background: #e0e0e0;
+}
+/*# sourceMappingURL=mymask.e807b280.css.map */

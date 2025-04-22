@@ -1,0 +1,6 @@
+body { font-family: sans-serif; margin: 20px; }
+nav { margin-bottom: 20px; }
+nav button { margin-right: 10px; }
+.page { display: none; }
+.page.active { display: block; }
+img, video { max-width: 100%; height: auto; }
