@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # MyMark Web App (Vue.js + Flask)
 
 ## Overview
@@ -55,3 +56,6 @@ The frontend will be available at http://localhost:1234
 ---
 
 For further development, connect the Flask API endpoints to the logic in `watermarking/`, `detection/`, and `blockchain/` as needed.
+=======
+# cerrf-scratch
+>>>>>>> origin/main
