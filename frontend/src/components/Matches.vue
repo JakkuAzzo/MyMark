@@ -1,43 +1,61 @@
 <template>
-  <div style="padding: 20px;">
-    <h2>Matches</h2>
-    <button @click="handleScan">Scan Now</button>
-    <p style="font-weight: bold;">{{ scanStatus }}</p>
-    <div v-if="matches.length">
-      <h3>Matches found:</h3>
-      <ul>
-        <li v-for="(match, idx) in matches" :key="idx">
-          <span>{{ match[0] }}</span> (distance: {{ match[1] }})
-        </li>
-      </ul>
-    </div>
+  <div class="cubist-card">
+    <h2 class="cubist-title">Matches</h2>
+    <div v-if="error" class="cubist-status">{{ error }}</div>
     <div v-else>
-      <p>No matches found yet.</p>
+      <ul>
+        <li v-for="(match, idx) in matches" :key="idx">{{ match[0] }}: {{ match[1] }}</li>
+      </ul>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 
 const matches = ref([]);
-const scanStatus = ref('');
+const error = ref('');
 
 async function fetchMatches() {
-  const res = await fetch('http://localhost:5000/api/matches');
-  const data = await res.json();
-  matches.value = data.matches || [];
+  try {
+    const res = await fetch('/api/matches', { credentials: 'include' });
+    if (!res.ok) {
+      error.value = 'You must be logged in to view matches.';
+      return;
+    }
+    const data = await res.json();
+    matches.value = data.matches || [];
+  } catch {
+    error.value = 'Failed to fetch matches.';
+  }
 }
 
-async function handleScan() {
-  scanStatus.value = 'Scanning for matches...';
-  await fetch('http://localhost:5000/api/scan', { method: 'POST' });
-  scanStatus.value = 'Scan complete!';
-  await fetchMatches();
-}
-
-fetchMatches();
+onMounted(fetchMatches);
 </script>
 
 <style scoped>
+.cubist-card {
+  background: #fff;
+  border: 4px solid #111;
+  border-radius: 18px 0 18px 0;
+  box-shadow: 8px 8px 0 #bbb, 0 0 0 8px #fff inset;
+  padding: 40px 32px 32px 32px;
+  margin: 40px auto;
+  max-width: 420px;
+  min-width: 320px;
+  text-align: center;
+}
+.cubist-title {
+  font-family: 'Montserrat', 'Arial', sans-serif;
+  font-weight: 900;
+  font-size: 2em;
+  color: #111;
+  margin-bottom: 18px;
+  letter-spacing: 1px;
+}
+.cubist-status {
+  color: #e53935;
+  font-weight: bold;
+  min-height: 24px;
+}
 </style>

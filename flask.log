@@ -1,12 +1,8 @@
- * Serving Flask app 'app'
- * Debug mode: on
-[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
- * Running on http://127.0.0.1:5000
-[33mPress CTRL+C to quit[0m
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 781-754-604
-127.0.0.1 - - [22/Apr/2025 01:36:50] "GET /api/matches HTTP/1.1" 200 -
-127.0.0.1 - - [22/Apr/2025 01:36:51] "GET /api/stats HTTP/1.1" 200 -
-127.0.0.1 - - [22/Apr/2025 01:37:01] "GET /api/matches HTTP/1.1" 200 -
-127.0.0.1 - - [22/Apr/2025 01:37:03] "GET /api/stats HTTP/1.1" 200 -
+Traceback (most recent call last):
+  File "/Users/nathanbrown-bennett/mymask/app.py", line 9, in <module>
+    from blockchain import BlockchainRegistry
+  File "/Users/nathanbrown-bennett/mymask/blockchain/__init__.py", line 112, in <module>
+    registry = BlockchainRegistry()
+  File "/Users/nathanbrown-bennett/mymask/blockchain/__init__.py", line 56, in __init__
+    raise ConnectionError(f"Cannot reach node at {provider_url}")
+ConnectionError: Cannot reach node at http://127.0.0.1:8545

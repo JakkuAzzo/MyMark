@@ -14,7 +14,10 @@ export default defineConfig({
     minVersion: 'TLSv1.2', // enforce at least TLS 1.2
     requestCert: false,          // do not request client certificate
     rejectUnauthorized: false,   // do not reject if client isn't authorized
-    ALPNProtocols: ['http/1.1']  // Ensure advertisement of HTTP/1.1
+    // Removed custom ciphers settings and secureOptions to use Node defaults:
+    // ciphers: [ ... ].join(':'),
+    // secureOptions: constants.SSL_OP_NO_SSLv3 | constants.SSL_OP_NO_SSLv2,
+    // honorCipherOrder: true,
   },
   plugins: [vue()],
   define: {
