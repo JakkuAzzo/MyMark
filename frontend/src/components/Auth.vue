@@ -29,13 +29,45 @@
         <button :class="['cubist-btn', tab==='register' && 'active']" @click="tab='register'">Register</button>
       </div>
       <transition name="fade">
+        <!-- Login Form -->
         <div v-if="tab==='login'" class="auth-form cubist-form">
+          <!-- Always require username for login -->
+          <input v-model="loginUsername" placeholder="Username" class="cubist-input" />
           <button @click="openFaceLogin" class="cubist-btn face-btn">Face Login</button>
-          <button @click="openVocalLogin" class="cubist-btn vocal-btn">Catchphrase Login</button>
+          <button @click="toggleCatchphraseLogin" class="cubist-btn vocal-btn">Catchphrase Login</button>
+          <div v-if="catchphraseLogin">
+            <p>Please record your catchphrase twice:</p>
+            <button @click="recordCatchphrase" class="cubist-btn">
+              Record ({{ catchphraseRecordCount }}/2)
+            </button>
+            <button v-if="recordings.length === 2" @click="playbackCatchphrase" class="cubist-btn">
+              Playback
+            </button>
+            <button v-if="recordings.length === 2" @click="submitCatchphraseLogin" class="cubist-btn">
+              Submit
+            </button>
+          </div>
         </div>
+        <!-- Register Form -->
         <div v-else class="auth-form cubist-form">
+          <!-- Require username -->
           <input v-model="registerUsername" placeholder="Username" class="cubist-input" />
-          <button @click="startRegisterID" class="cubist-btn face-btn">Register with ID & Face</button>
+          <!-- Registration with Face & ID -->
+          <div v-if="!idImage">
+            <button @click="startRegisterID" class="cubist-btn face-btn">Capture ID Image</button>
+          </div>
+          <div v-else-if="!faceImage">
+            <button @click="openWebcamModal('face')" class="cubist-btn face-btn">Capture Face Image</button>
+          </div>
+          <div v-else>
+            <p v-if="faceMatch === null">Comparing images…</p>
+            <p v-else-if="!faceMatch" style="color:red;">Face images do not match. Please retry.</p>
+            <p v-else style="color:green;">Face images match.</p>
+          </div>
+          <!-- Only show Submit button if images are available and match -->
+          <button v-if="faceImage && idImage && faceMatch === true" @click="submitFaceRegister" class="cubist-btn">
+            Submit Registration
+          </button>
           <button @click="openVocalRegister" class="cubist-btn vocal-btn">Catchphrase Register</button>
         </div>
       </transition>
@@ -127,11 +159,125 @@ const typedCatchphrase = ref('');
 let mediaRecorder = null;
 let audioChunks = [];
 
+// New state for login
+const loginUsername = ref('');
+// New states for registration with Face & ID
+const faceMatch = ref(null);
+// New state for catchphrase login
+const catchphraseLogin = ref(false);
+const catchphraseRecordCount = ref(0);
+const recordings = ref([]);
+
+// New stub for face comparison (would use FaceNet in a real app)
+async function compareFaces(idImg, faceImg) {
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  return true; // assume match for demo
+}
+
+// Modified function for face register submission
+async function submitFaceRegister() {
+  if (!registerUsername.value || !idImage.value || !faceImage.value) {
+    status.value = "Username, ID image and face image are required.";
+    return;
+  }
+  if (faceMatch.value !== true) {
+    status.value = "Face images have not been verified yet.";
+    return;
+  }
+  status.value = "Images match. Submitting registration…";
+  try {
+    const res = await fetch('/api/face_register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: registerUsername.value,
+        id_image: idImage.value,
+        face_image: faceImage.value
+      }),
+      credentials: 'include'
+    });
+    const data = await res.json();
+    status.value = data.message || "Registration failed.";
+    if (data.status === 'success') {
+      await fetchUser();
+    }
+  } catch {
+    status.value = "Registration failed (network error).";
+  }
+}
+
+// Modified functions for catchphrase login
+function toggleCatchphraseLogin() {
+  catchphraseLogin.value = !catchphraseLogin.value;
+  if (catchphraseLogin.value) {
+    recordings.value = [];
+    catchphraseRecordCount.value = 0;
+  }
+}
+async function recordCatchphrase() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const mediaRecorder = new MediaRecorder(stream);
+    let chunks = [];
+    mediaRecorder.ondataavailable = e => chunks.push(e.data);
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(chunks, { type: 'audio/webm' });
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        recordings.value.push(reader.result);
+        catchphraseRecordCount.value++;
+      };
+      reader.readAsDataURL(blob);
+      stream.getTracks().forEach(track => track.stop());
+    };
+    mediaRecorder.start();
+    setTimeout(() => { mediaRecorder.stop(); }, 3000);
+  } catch (err) {
+    status.value = "Error recording audio: " + err.message;
+  }
+}
+function playbackCatchphrase() {
+  if (recordings.value.length === 2) {
+    const audio1 = new Audio(recordings.value[0]);
+    const audio2 = new Audio(recordings.value[1]);
+    audio1.play();
+    audio1.onended = () => audio2.play();
+  }
+}
+async function submitCatchphraseLogin() {
+  if (recordings.value.length !== 2 || !loginUsername.value) {
+    status.value = "Username and two recordings are required.";
+    return;
+  }
+  status.value = "Submitting catchphrase login…";
+  try {
+    const res = await fetch('/api/vocal_login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: loginUsername.value,
+        catchphrase: recordings.value.join('||')
+      }),
+      credentials: 'include'
+    });
+    const data = await res.json();
+    status.value = data.message || "Login failed.";
+    if (data.status === 'success') {
+      await fetchUser();
+    }
+  } catch {
+    status.value = "Login failed (network error).";
+  }
+}
+
 async function fetchUser() {
   try {
     const res = await fetch('/api/user', { credentials: 'include' });
     if (!res.ok) {
+      const errText = await res.text();
+      console.error("fetchUser: response not OK:", errText);
       loggedIn.value = false;
+      status.value = "User not logged in.";
       return;
     }
     const data = await res.json();
@@ -140,9 +286,12 @@ async function fetchUser() {
       loggedIn.value = true;
     } else {
       loggedIn.value = false;
+      status.value = data.message || "Failed to fetch user.";
     }
-  } catch {
+  } catch (err) {
+    console.error("fetchUser: network error", err);
     loggedIn.value = false;
+    status.value = "Failed to fetch user (network error).";
   }
 }
 

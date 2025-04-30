@@ -36,11 +36,17 @@ def generate_paseto(username):
 
 def verify_paseto(token):
     try:
+        if not token:
+            print("verify_paseto: No token provided")
+            return None
         claims = paseto.parse(key=PASETO_KEY.encode(), purpose='local', token=token)
+        print("verify_paseto: claims received:", claims)
         if datetime.datetime.fromisoformat(claims['exp']) < datetime.datetime.utcnow():
+            print("verify_paseto: Token expired")
             return None
         return claims['sub']
-    except Exception:
+    except Exception as e:
+        print("verify_paseto: error parsing token:", e)
         return None
 
 def require_auth(f):
@@ -143,10 +149,12 @@ def logout():
 @require_auth
 def user_details():
     token = request.cookies.get('token')
+    print("user_details: token=", token)
     username = verify_paseto(token) if token else None
     if not username:
+        print("user_details: No valid username; aborting.")
         return jsonify({'status': 'fail', 'message': 'Not logged in'}), 401
-    # For demo, just return username and stats
+    print("user_details: username=", username)
     return jsonify({
         'status': 'success',
         'username': username,

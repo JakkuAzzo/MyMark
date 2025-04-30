@@ -1,33 +1,23 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import fs from 'fs'
-import { constants } from 'crypto'
 
-// Replace with your server's actual IP address
-const SERVER_IP = '10.186.95.105';
+const SERVER_IP = '127.0.2.2';
 
 export default defineConfig({
-  base: '/',
-  https: {
-    key: fs.readFileSync('/Users/nathanbrown-bennett/mymask/server.key'),
-    cert: fs.readFileSync('/Users/nathanbrown-bennett/mymask/server.crt'),
-    minVersion: 'TLSv1.2', // enforce at least TLS 1.2
-    requestCert: false,          // do not request client certificate
-    rejectUnauthorized: false,   // do not reject if client isn't authorized
-    ALPNProtocols: ['http/1.1']  // Ensure advertisement of HTTP/1.1
-  },
   plugins: [vue()],
-  define: {
-    __APP_TITLE__: JSON.stringify('My Mark')
-  },
   server: {
     host: '0.0.0.0',
-    https: true,
+    https: {
+      key: fs.readFileSync('../server.key'),
+      cert: fs.readFileSync('../server.crt')
+    },
+    port: 5173,
     proxy: {
       '/api': {
         target: `https://${SERVER_IP}:5000`,
         changeOrigin: true,
-        secure: false,
+        secure: false
       }
     }
   }

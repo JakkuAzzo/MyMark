@@ -5,8 +5,7 @@ const fs = require('fs');
 const options = {
   key: fs.readFileSync('server.key'),
   cert: fs.readFileSync('server.crt'),
-  minVersion: 'TLSv1.2',
-  ALPNProtocols: ['http/1.1']   // Enforce advertisement of HTTP/1.1
+  minVersion: 'TLSv1.2'
 };
 
 https.createServer(options, (req, res) => {
