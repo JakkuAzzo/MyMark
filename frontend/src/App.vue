@@ -18,6 +18,7 @@
     <Matches v-else-if="page === 'matches'" />
     <Stats v-else-if="page === 'stats'" />
     <Auth v-else-if="page === 'auth'" />
+    <Cubist404 v-else @goHome="page = 'dashboard'" />
   </div>
 </template>
 
@@ -28,6 +29,7 @@ import Upload from './components/Upload.vue';
 import Matches from './components/Matches.vue';
 import Stats from './components/Stats.vue';
 import Auth from './components/Auth.vue';
+import Cubist404 from './components/Cubist404.vue';
 
 const page = ref('dashboard');
 const navItems = [

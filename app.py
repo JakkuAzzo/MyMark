@@ -12,6 +12,10 @@ import paseto
 import datetime
 import base64
 from functools import wraps
+import face_recognition
+import pytesseract
+from PIL import Image
+import signal
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True, origins="*")
@@ -58,6 +62,28 @@ def require_auth(f):
             return jsonify({'status': 'fail', 'message': 'Not authenticated'}), 401
         return f(*args, **kwargs)
     return decorated
+
+def init_users_db():
+    db_path = DB_USERS
+    os.makedirs(os.path.dirname(db_path), exist_ok=True)
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+    # Add columns for face_embedding and catchphrase_embedding (BLOB for future use)
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE,
+            password TEXT,
+            face_embedding BLOB,
+            catchphrase_embedding BLOB,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+    """)
+    conn.commit()
+    conn.close()
+
+# Call this at startup
+init_users_db()
 
 @app.route('/', methods=['GET'])
 def index():
@@ -110,16 +136,24 @@ def register():
     data = request.json
     if not data or 'username' not in data or 'password' not in data:
         return jsonify({'status': 'fail', 'message': 'Missing username or password'}), 400
-    # Store user in SQLite users DB
-    conn = sqlite3.connect(DB_USERS)
-    c = conn.cursor()
-    c.execute("INSERT INTO users (pass_salt, pass_hash, kyc_id_hash, created_at) VALUES (?, ?, ?, datetime('now'))", (data['username'], data['password'], data.get('kyc_id_hash', '')))
-    conn.commit()
-    conn.close()
-    token = generate_paseto(data['username'])
-    resp = jsonify({'status': 'success', 'message': 'User registered'})
-    resp.set_cookie('token', token, httponly=True, samesite='None', secure=True)
-    return resp
+    try:
+        conn = sqlite3.connect(DB_USERS)
+        c = conn.cursor()
+        # Insert user with empty face/catchphrase embeddings for now
+        c.execute("""
+            INSERT INTO users (username, password, face_embedding, catchphrase_embedding)
+            VALUES (?, ?, ?, ?)
+        """, (data['username'], data['password'], None, None))
+        conn.commit()
+        conn.close()
+        token = generate_paseto(data['username'])
+        resp = jsonify({'status': 'success', 'message': 'User registered'})
+        resp.set_cookie('token', token, httponly=True, samesite='None', secure=True)
+        return resp
+    except sqlite3.IntegrityError:
+        return jsonify({'status': 'fail', 'message': 'Username already exists'}), 400
+    except Exception as e:
+        return jsonify({'status': 'fail', 'message': f'Registration failed: {str(e)}'}), 500
 
 @app.route('/api/login', methods=['POST'])
 def login():
@@ -128,7 +162,7 @@ def login():
         return jsonify({'status': 'fail', 'message': 'Missing username or password'}), 400
     conn = sqlite3.connect(DB_USERS)
     c = conn.cursor()
-    c.execute("SELECT * FROM users WHERE pass_salt=? AND pass_hash=?", (data['username'], data['password']))
+    c.execute("SELECT * FROM users WHERE username=? AND password=?", (data['username'], data['password']))
     user = c.fetchone()
     conn.close()
     if user:
@@ -182,11 +216,89 @@ def scan():
     return jsonify({'status': 'success', 'message': 'Scan triggered (stub)'})
 
 # --- Face/Vocal registration/login endpoints (stubs) ---
+def decode_image(dataUrl):
+    # Strip data URL header, if present
+    if ',' in dataUrl:
+        _, encoded = dataUrl.split(',', 1)
+    else:
+        encoded = dataUrl
+    return base64.b64decode(encoded)
+
+@app.route('/api/validate_id', methods=['POST'])
+def validate_id():
+    data = request.json
+    if not data or 'id_image' not in data:
+        return jsonify({'status': 'fail', 'message': 'Missing id_image'}), 400
+    img_data = decode_image(data['id_image'])
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as id_file:
+        id_file.write(img_data)
+        id_filepath = id_file.name
+    is_valid = validateIDDocument(id_filepath)
+    os.remove(id_filepath)
+    if is_valid:
+        return jsonify({'status': 'success', 'message': 'ID card detected.'})
+    else:
+        return jsonify({'status': 'fail', 'message': 'No ID card detected. Please try again.'}), 400
+
+class TimeoutException(Exception):
+    pass
+
+def timeout_handler(signum, frame):
+    raise TimeoutException("Face registration timed out.")
+
 @app.route('/api/face_register', methods=['POST'])
 def face_register():
-    # Accepts: { "face_image": base64, "username": str }
-    # TODO: Implement FaceNet logic
-    return jsonify({'status': 'success', 'message': 'Face registered (stub)'})
+    import time
+    start_time = time.time()
+    signal.signal(signal.SIGALRM, timeout_handler)
+    signal.alarm(20)
+    try:
+        data = request.json
+        if not data or 'username' not in data or 'id_image' not in data or 'face_image' not in data:
+            return jsonify({'status': 'fail', 'message': 'Missing required fields'}), 400
+
+        id_img_data = decode_image(data['id_image'])
+        face_img_data = decode_image(data['face_image'])
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as id_file:
+            id_file.write(id_img_data)
+            id_filepath = id_file.name
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as face_file:
+            face_file.write(face_img_data)
+            face_filepath = face_file.name
+
+        # Validate ID card
+        if not validateIDDocument(id_filepath):
+            os.remove(id_filepath)
+            os.remove(face_filepath)
+            return jsonify({'status': 'fail', 'message': 'No ID card detected in first image.'}), 400
+
+        # Perform face comparison with fast fail and logging
+        try:
+            match = compareFaces(face_filepath, id_filepath)
+        except Exception as e:
+            os.remove(id_filepath)
+            os.remove(face_filepath)
+            print("compareFaces error:", e)
+            return jsonify({'status': 'fail', 'message': f'Face comparison error: {str(e)}'}), 400
+
+        os.remove(id_filepath)
+        os.remove(face_filepath)
+
+        if match:
+            print(f"face_register: success in {time.time() - start_time:.2f}s")
+            return jsonify({'status': 'success', 'message': 'Face images match.'})
+        else:
+            print(f"face_register: no match in {time.time() - start_time:.2f}s")
+            return jsonify({'status': 'fail', 'message': 'Face images do not match.'}), 400
+    except TimeoutException as e:
+        print("face_register: timeout")
+        return jsonify({'status': 'fail', 'message': str(e)}), 504
+    except Exception as e:
+        print("face_register error:", e)
+        return jsonify({'status': 'fail', 'message': f'Internal error: {str(e)}'}), 400
+    finally:
+        signal.alarm(0)  # Always disable alarm
 
 @app.route('/api/face_login', methods=['POST'])
 def face_login():
@@ -218,6 +330,46 @@ def nav_items():
         {"name": "login", "label": "Login", "tooltip": "Sign in to your account"},
         # ...other nav items...
     ])
+
+def compareFaces(uploaded_face_path, id_face_path, tolerance=0.6):
+    # Load images from file paths
+    uploaded_image = face_recognition.load_image_file(uploaded_face_path)
+    id_image = face_recognition.load_image_file(id_face_path)
+    # Get face encodings
+    uploaded_encodings = face_recognition.face_encodings(uploaded_image)
+    id_encodings = face_recognition.face_encodings(id_image)
+    if not uploaded_encodings or not id_encodings:
+        # Could not detect a face in one or both images
+        return False
+    # Compare the first detected face
+    results = face_recognition.compare_faces([id_encodings[0]], uploaded_encodings[0], tolerance=tolerance)
+    return results[0]
+
+def validateIDDocument(document_path):
+    # Load document image and extract text using OCR
+    try:
+        image = Image.open(document_path)
+        text = pytesseract.image_to_string(image)
+    except Exception as e:
+        # Log or handle error
+        return False
+    # Basic check for expected identification keywords
+    keywords = ['Driver', 'License', 'ID', 'Identification']
+    if any(word in text for word in keywords):
+        return True
+    return False
+
+@app.route('/api/check_db', methods=['GET'])
+def check_db():
+    try:
+        conn = sqlite3.connect(DB_USERS)
+        c = conn.cursor()
+        c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users';")
+        exists = c.fetchone() is not None
+        conn.close()
+        return jsonify({'status': 'success', 'users_table_exists': exists})
+    except Exception as e:
+        return jsonify({'status': 'fail', 'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', ssl_context=('server.crt', 'server.key'))
