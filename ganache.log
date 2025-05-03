@@ -1,0 +1,67 @@
+This version of µWS is not compatible with your Node.js build:
+
+Error: Cannot find module '../binaries/uws_darwin_arm64_131.node'
+Require stack:
+- /opt/homebrew/lib/node_modules/ganache/node_modules/@trufflesuite/uws-js-unofficial/src/uws.js
+- /opt/homebrew/lib/node_modules/ganache/dist/node/cli.js
+Falling back to a NodeJS implementation; performance may be degraded.
+
+
+ganache v7.9.2 (@ganache/cli: 0.10.2, @ganache/core: 0.10.2)
+Starting RPC server
+
+Available Accounts
+==================
+(0) 0x37D537DA798c98D1C0365044A3a4940e3a6d7Dc3 (1000 ETH)
+(1) 0x734eEEd98FcCB72704916748901dFE8D473A6D4c (1000 ETH)
+(2) 0x6B15EB8432C2D7700Bd4B95532A6CFE37Fc726Cf (1000 ETH)
+(3) 0x4ac02133939CC736136E771e86D492B742e709B8 (1000 ETH)
+(4) 0x21efc75e9f120f1590A17e07F1642373782F66E3 (1000 ETH)
+(5) 0xA1B4121e82B282a61fA1B37e6f87a4b0fA141DD6 (1000 ETH)
+(6) 0x1cE07E9f098Ae0c4E64F937918D9d29B4C5EE598 (1000 ETH)
+(7) 0xe82c2E7AFD937704a9fC11142e262A8844C8A524 (1000 ETH)
+(8) 0x4e7A85b8b6687291E2f305321Ab5051aC1fea387 (1000 ETH)
+(9) 0xB93Fe65fBf4De6B395FA0f8a1Aa256A5cE4Bb8b8 (1000 ETH)
+
+Private Keys
+==================
+(0) 0x1c044346705be2a7c983898a63f95a6129c0eeddb078127e40c40249b8935b67
+(1) 0x308890b299fb10eaa28008289a71e56a1141d829e5d2237af79de96ff6544458
+(2) 0x6ab1b936668a33e270f670c7a0da5b73524d9124105ac1a81fb266a94aec8044
+(3) 0x1cd0fa9304ed87f98960174376c5acc16ab5b184584400068e6edf49bff89b1b
+(4) 0xd749f719ed0eeb62d2e61d08a2887049a38fb3ef4bfd9fd2190515894b8c0406
+(5) 0x16c5172f72c1f9bdf785963f478d68a3ea50f7139f0e3fc6fd994c0d3d632fb4
+(6) 0xcdfe0c10991bc1e1160a08d27928faa1b794860f7b96f7c765185b008a72f8f8
+(7) 0x5c136853579338a0d4ba7fde530d95a5276a02bf137874b488dc2fb913b5f0b0
+(8) 0xa97b2599f8bc2c1ad425b3e398975b6470f4ce71d2cf23064bd688b1a2c7486a
+(9) 0x0117208df0b1fe267ed6ab06cdc75e31d360de2f00c498d27cc1f09f21f5c75f
+
+HD Wallet
+==================
+Mnemonic:      soccer wish distance regular rotate three decrease involve hotel shaft believe save
+Base HD Path:  m/44'/60'/0'/0/{account_index}
+
+Default Gas Price
+==================
+2000000000
+
+BlockGas Limit
+==================
+30000000
+
+Call Gas Limit
+==================
+50000000
+
+Chain
+==================
+Hardfork: shanghai
+Id:       1337
+
+RPC Listening on 127.0.0.1:8545
+web3_clientVersion
+web3_clientVersion
+web3_clientVersion
+web3_clientVersion
+web3_clientVersion
+web3_clientVersion

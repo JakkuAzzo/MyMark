@@ -55,3 +55,5 @@ wrapt==1.17.2
 web3
 eth-account
 imagehash
+pytesseract
+onnxruntime

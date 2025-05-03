@@ -54,4 +54,23 @@ for model in "${!MODEL_PATHS[@]}"; do
   fi
 done
 
+# Download Silent-Face-Anti-Spoofing liveness model (Python backend)
+LIVENESS_DIR="liveness_model"
+LIVENESS_URL="https://github.com/minivision-ai/Silent-Face-Anti-Spoofing/releases/download/v1.0/onnx_models.zip"
+if [ ! -d "$LIVENESS_DIR" ]; then
+  echo "Downloading Silent-Face-Anti-Spoofing liveness model..."
+  mkdir -p "$LIVENESS_DIR"
+  if command -v wget > /dev/null 2>&1; then
+    wget -O "$LIVENESS_DIR/onnx_models.zip" "$LIVENESS_URL"
+  elif command -v curl > /dev/null 2>&1; then
+    curl -L -o "$LIVENESS_DIR/onnx_models.zip" "$LIVENESS_URL"
+  else
+    echo "ERROR: Neither wget nor curl is installed. Please install one to download the liveness model."
+    exit 1
+  fi
+  unzip "$LIVENESS_DIR/onnx_models.zip" -d "$LIVENESS_DIR"
+  rm "$LIVENESS_DIR/onnx_models.zip"
+fi
+echo "Liveness model ready in $LIVENESS_DIR"
+
 echo "face-api.js models are ready in $MODEL_DIR"

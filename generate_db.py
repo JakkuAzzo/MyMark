@@ -8,13 +8,8 @@ import hashlib
 def generate_dummy_user():
     # Create dummy user data.
     face_embedding = os.urandom(512)  # 512 bytes binary (dummy 128‑D vector)
-    salt = os.urandom(16)             # 16 random bytes
-    pass_salt = salt.hex()
-    password = "password".encode('utf-8')
-    pass_hash = hashlib.sha256(password + salt).hexdigest()
-    kyc_id_hash = hashlib.sha256(b"dummy_id_document").hexdigest()
     created_at = datetime.datetime.now(datetime.timezone.utc).isoformat()
-    return (face_embedding, pass_salt, pass_hash, kyc_id_hash, created_at)
+    return (face_embedding, "dummy_user", None, created_at)
 
 def generate_dummy_social_data():
     # Create dummy social data.
@@ -35,16 +30,15 @@ def init_users_db():
         CREATE TABLE users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             face_embedding BLOB,
-            pass_salt TEXT,
-            pass_hash TEXT,
-            kyc_id_hash TEXT,
+            username TEXT UNIQUE,
+            catchphrase_embedding BLOB,
             created_at DATETIME
         );
     """)
     user = generate_dummy_user()
     c.execute("""
-        INSERT INTO users (face_embedding, pass_salt, pass_hash, kyc_id_hash, created_at)
-        VALUES (?, ?, ?, ?, ?);
+        INSERT INTO users (face_embedding, username, catchphrase_embedding, created_at)
+        VALUES (?, ?, ?, ?);
     """, user)
     conn.commit()
     print("Inserted dummy user with id:", c.lastrowid)

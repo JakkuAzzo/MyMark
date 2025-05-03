@@ -3,6 +3,51 @@
 
 set -e
 
+# 0. Ensure Ganache (Ethereum testnet) is running on port 8545
+GANACHE_PORT=8545
+GANACHE_PID=""
+if ! command -v lsof >/dev/null 2>&1; then
+  echo "lsof not found. Please install lsof or manually ensure Ganache is running on port $GANACHE_PORT."
+  exit 1
+fi
+
+if ! command -v ganache >/dev/null 2>&1; then
+  echo "Ganache is not installed or not in PATH. Please install Ganache CLI (npm i -g ganache) and try again."
+  exit 1
+fi
+
+GANACHE_PID=$(lsof -ti tcp:$GANACHE_PORT || true)
+
+if [ -z "$GANACHE_PID" ]; then
+  echo "Ganache is not running. Starting Ganache on port $GANACHE_PORT..."
+  if ! command -v ganache >/dev/null 2>&1; then
+    echo "Ganache is not installed or not in PATH. Please install Ganache CLI (npm i -g ganache) and try again."
+    exit 1
+  fi
+  # Fix: Remove invalid argument and use correct Ganache CLI options
+  nohup ganache --wallet.seed MyMarkDev --db "$(pwd)/blockchain/ganache-db" --port $GANACHE_PORT > ganache.log 2>&1 &
+  GANACHE_PID=$!
+  echo "Ganache started with PID $GANACHE_PID (logs: ganache.log)"
+  # Wait for Ganache to be ready
+  echo "Waiting for Ganache to listen on port $GANACHE_PORT..."
+  for i in {1..20}; do
+    if lsof -i :$GANACHE_PORT | grep -q node; then
+      echo "Ganache is running on port $GANACHE_PORT."
+      break
+    fi
+    sleep 1
+    if [ $i -eq 20 ]; then
+      echo "ERROR: Ganache did not start on port $GANACHE_PORT after 20 seconds."
+      echo "Last 20 lines of ganache.log:"
+      tail -20 ganache.log
+      kill $GANACHE_PID 2>/dev/null || true
+      exit 1
+    fi
+  done
+else
+  echo "Ganache is already running on port $GANACHE_PORT (PID $GANACHE_PID)."
+fi
+
 # 1. Detect all active IPv4 addresses (excluding loopback)
 if command -v ip > /dev/null 2>&1; then
   # Linux: use `ip`
@@ -90,6 +135,28 @@ for ip in $FILTERED_IPS; do
   fi
 done
 
+# 5. Ensure port 5050 is free before starting Flask backend
+FLASK_PORT=5050
+# Try to kill all processes using port 5050, retry if still in use
+for attempt in {1..3}; do
+  FLASK_PID_EXISTING=$(lsof -ti tcp:$FLASK_PORT || true)
+  if [ -n "$FLASK_PID_EXISTING" ]; then
+    echo "Port $FLASK_PORT is already in use by process(es): $FLASK_PID_EXISTING. Killing them..."
+    kill -9 $FLASK_PID_EXISTING || true
+    sleep 2
+  else
+    break
+  fi
+done
+
+# Final check: if still in use, abort with clear message
+FLASK_PID_EXISTING=$(lsof -ti tcp:$FLASK_PORT || true)
+if [ -n "$FLASK_PID_EXISTING" ]; then
+  echo "ERROR: Port $FLASK_PORT is still in use after multiple kill attempts."
+  echo "You may need to disable AirPlay Receiver (System Preferences -> General -> AirDrop & Handoff) or reboot."
+  exit 1
+fi
+
 # 5. Start Flask backend in background with HTTPS
 source .venv/bin/activate
 export FLASK_APP=app.py
@@ -98,6 +165,23 @@ nohup python app.py > flask.log 2>&1 &
 FLASK_PID=$!
 echo "Flask backend started with PID $FLASK_PID (logs: flask.log)"
 deactivate
+
+# NEW: Wait for Flask to actually listen on port 5050 (max 20s)
+echo "Waiting for Flask to listen on port 5050..."
+for i in {1..20}; do
+  if lsof -i :5050 | grep -q LISTEN; then
+    echo "Flask is running on port 5050."
+    break
+  fi
+  sleep 1
+  if [ $i -eq 20 ]; then
+    echo "ERROR: Flask did not start on port 5050 after 20 seconds."
+    echo "Last 20 lines of flask.log:"
+    tail -20 flask.log
+    kill $FLASK_PID 2>/dev/null || true
+    exit 1
+  fi
+done
 
 # NEW: Wait a few seconds to ensure Flask is ready
 sleep 5
@@ -119,5 +203,5 @@ VITE_PID=$!
 cd ..
 
 # 8. Wait for user to stop the script
-trap "kill $FLASK_PID $VITE_PID" EXIT
+trap "kill $FLASK_PID $VITE_PID $GANACHE_PID" EXIT
 wait

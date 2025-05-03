@@ -266,6 +266,12 @@ async function submitFaceRegister() {
     return;
   }
   status.value = "Images match. Submitting registration…";
+  // Debug: log payload before sending
+  console.log("Submitting face register:", {
+    username: registerUsername.value,
+    id_image: idImage.value?.slice(0, 30) + "...",
+    face_image: faceImage.value?.slice(0, 30) + "..."
+  });
   try {
     const res = await fetch('/api/face_register', {
       method: 'POST',
@@ -460,8 +466,28 @@ function captureImage() {
     faceLoginWithImage(dataUrl);
   } else if (tab.value === 'register') {
     if (registerStep.value === 'id') {
-      idImage.value = dataUrl;
-      openWebcamModal('face');
+      // --- NEW: Validate ID card immediately after capture ---
+      status.value = "Validating ID card...";
+      fetch('/api/validate_id', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id_image: dataUrl })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'success') {
+          idImage.value = dataUrl;
+          idError.value = '';
+          openWebcamModal('face');
+        } else {
+          idError.value = data.message || 'ID card not detected. Please try again.';
+          status.value = idError.value;
+        }
+      })
+      .catch(() => {
+        idError.value = 'Network error during ID validation.';
+        status.value = idError.value;
+      });
     } else if (registerStep.value === 'face') {
       faceImage.value = dataUrl;
       closeWebcamModal();
@@ -719,6 +745,12 @@ let detectActive = false; // Add this flag at the top-level
 function detectionLoop() {
   if (!video.value || !overlay.value) return;
   const displaySize = { width: video.value.width, height: video.value.height };
+  // Defensive: ensure overlay.value and context exist before using
+  const ctx = overlay.value.getContext('2d', { willReadFrequently: true });
+  if (!ctx) {
+    console.warn("Overlay canvas context is null");
+    return;
+  }
   faceapi.matchDimensions(overlay.value, displaySize);
   const detect = async () => {
     if (!video.value || !overlay.value || video.value.readyState < 2) {
@@ -729,9 +761,6 @@ function detectionLoop() {
       .detectAllFaces(video.value, new faceapi.TinyFaceDetectorOptions())
       .withFaceLandmarks(true);
     const resized = faceapi.resizeResults(detections, displaySize);
-    // Guard before using overlay.value
-    if (!overlay.value) return;
-    const ctx = overlay.value.getContext('2d');
     if (!ctx) return;
     ctx.clearRect(0, 0, overlay.value.width, overlay.value.height);
     if (resized && resized.length > 0) {
