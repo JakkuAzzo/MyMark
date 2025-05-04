@@ -50,16 +50,28 @@ class BlockchainRegistry:
         abi_path: str | Path = ABI_PATH,
         provider_url: str = GANACHE_URL,
         priv_key: str = DEFAULT_PRIVATE_KEY,
+        connect: bool = True,  # NEW: allow skipping connection for dev/test
     ):
-        self.web3 = Web3(Web3.HTTPProvider(provider_url))
-        if not self.web3.is_connected():
-            raise ConnectionError(f"Cannot reach node at {provider_url}")
-
-        self.account = Account.from_key(priv_key)
-        self.contract = self.web3.eth.contract(
-            address=self.web3.to_checksum_address(contract_address),
-            abi=_load_abi(Path(abi_path)),
-        )
+        if connect:
+            self.web3 = Web3(Web3.HTTPProvider(provider_url))
+            if not self.web3.is_connected():
+                print(f"WARNING: Cannot reach node at {provider_url}. Blockchain features will be disabled.")
+                self.web3 = None
+                self.account = None
+                self.contract = None
+                self._enabled = False
+                return
+            self.account = Account.from_key(priv_key)
+            self.contract = self.web3.eth.contract(
+                address=self.web3.to_checksum_address(contract_address),
+                abi=_load_abi(Path(abi_path)),
+            )
+            self._enabled = True
+        else:
+            self.web3 = None
+            self.account = None
+            self.contract = None
+            self._enabled = False
 
     # ── write ────────────────────────────────────────────────────────────
     def register(self, image_id: str, fingerprint_hex: str) -> str:
@@ -109,4 +121,9 @@ class BlockchainRegistry:
 
 
 # Convenience singleton (importing modules can just use `registry`)
-registry = BlockchainRegistry()
+try:
+    registry = BlockchainRegistry()
+except Exception as e:
+    print(f"BlockchainRegistry init failed: {e}")
+    # Fallback: create a dummy registry with blockchain disabled
+    registry = BlockchainRegistry(connect=False)

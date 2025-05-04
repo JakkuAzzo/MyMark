@@ -18,15 +18,26 @@ from PIL import Image
 import signal
 import numpy as np
 import onnxruntime as ort
+import difflib
+import cv2
+import easyocr
+import re
+# Add resemblyzer for voice matching
+from resemblyzer import VoiceEncoder, preprocess_wav
 
 app = Flask(__name__)
-CORS(app, supports_credentials=True, origins="*")
+CORS(app, supports_credentials=True, origins=["https://192.168.0.120:5173"])
 
 DB_USERS = os.path.join(os.getcwd(), 'data', 'users_db', 'users.db')
 DB_SOCIAL = os.path.join(os.getcwd(), 'data', 'social_db', 'social.db')
 
 # Blockchain registry instance
-bc = BlockchainRegistry()
+try:
+    bc = BlockchainRegistry()
+except Exception as e:
+    print(f"BlockchainRegistry init failed: {e}")
+    # Fallback: create a dummy registry with blockchain disabled
+    bc = BlockchainRegistry(connect=False)
 
 PASETO_KEY = os.environ.get("PASETO_KEY", "supersecretkey1234567890123456")  # 32 bytes
 
@@ -131,29 +142,89 @@ def upload():
         # Return watermarked image as download
         return send_file(wm_path, as_attachment=True, download_name=f"watermarked_{filename}")
 
+def preprocess_for_ocr(img_path):
+    """Preprocess image for better OCR: grayscale, contrast, threshold."""
+    try:
+        img = cv2.imread(img_path)
+        if img is None:
+            print("[preprocess_for_ocr] Could not read image:", img_path)
+            return img_path
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        gray = cv2.equalizeHist(gray)
+        # Adaptive thresholding for better text extraction
+        thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C,
+                                       cv2.THRESH_BINARY, 21, 10)
+        temp_path = img_path + "_ocr_tmp.jpg"
+        cv2.imwrite(temp_path, thresh)
+        return temp_path
+    except Exception as e:
+        print("[preprocess_for_ocr] error:", e)
+        return img_path
+
+def fuzzy_keyword_match(text, keywords, threshold=0.7):
+    """Fuzzy match keywords in OCR text (lower threshold for more tolerance)."""
+    text_lower = text.lower()
+    for word in keywords:
+        for candidate in text_lower.split():
+            if difflib.SequenceMatcher(None, word, candidate).ratio() > threshold:
+                return True
+    return False
+
+easyocr_reader = easyocr.Reader(['en'], gpu=False)
+
+def extract_mrz(text):
+    """Extract MRZ lines from OCR text (for UK passports, etc)."""
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    # MRZ lines are typically 2 lines of 44 chars (passports) or 3 lines of 30/36 chars (ID cards)
+    mrz_lines = [line for line in lines if len(line) in (44, 36, 30)]
+    if len(mrz_lines) >= 2:
+        return "\n".join(mrz_lines[-2:])
+    return None
+
+def parse_mrz(mrz_text):
+    """Basic MRZ validation using regex (fallback if python-mrz is unavailable)."""
+    if not mrz_text:
+        return None
+    # Simple check: two lines, each 44 chars, mostly uppercase/chevrons/digits
+    lines = mrz_text.splitlines()
+    if len(lines) == 2 and all(len(line) == 44 for line in lines):
+        if re.match(r'^[A-Z0-9<]{44}$', lines[0]) and re.match(r'^[A-Z0-9<]{44}$', lines[1]):
+            return {"raw": mrz_text}
+    return None
+
 def is_valid_id_document(img_path):
     try:
-        image = Image.open(img_path)
-        text = pytesseract.image_to_string(image)
-        print(f"[is_valid_id_document] OCR text: {repr(text)}")
+        # Use EasyOCR for robust text extraction
+        result = easyocr_reader.readtext(img_path, detail=0, paragraph=True)
+        text = "\n".join(result)
+        print(f"[is_valid_id_document] EasyOCR text: {repr(text)}")
+        # Try to extract and parse MRZ
+        mrz_text = extract_mrz(text)
+        mrz_info = parse_mrz(mrz_text) if mrz_text else None
+        if mrz_info:
+            print(f"[is_valid_id_document] MRZ info: {mrz_info}")
+            has_mrz = True
+        else:
+            has_mrz = False
+        # Fallback: keyword search if no MRZ
         keywords = [
-            'driver', 'license', 'licence', 'id', 'identification',
-            'passport', 'university', 'provisional', 'driving',
-            'identity', 'card', 'british', 'united kingdom', 'uk', 'eu', 'european', 'union', 'number', 'surname', 'given name', 'authority'
+            'passport', 'passpoort', 'passaporto', 'reisepass', 'passeport',
+            'united kingdom', 'britain', 'british', 'citizen', 'surname', 'given', 'name',
+            'date', 'birth', 'expiry', 'issue', 'authority', 'hmpo', 'number', 'code',
+            'type', 'nationality', 'sex', 'male', 'female', 'm', 'f', 'p', 'gbr', 'uk',
+            'driving', 'license', 'licence', 'id', 'identification', 'identity', 'card', 'dvla'
         ]
-        text_lower = text.lower()
-        print(f"[is_valid_id_document] text_lower: {repr(text_lower)}")
-        matched = [word for word in keywords if word in text_lower]
-        print(f"[is_valid_id_document] matched keywords: {matched}")
-        has_keyword = bool(matched)
+        found = [word for word in keywords if word in text.lower()]
+        fuzzy_found = sum(
+            difflib.SequenceMatcher(None, word, candidate).ratio() > 0.7
+            for word in keywords for candidate in text.lower().split()
+        )
+        has_keyword = len(found) >= 1 or fuzzy_found >= 2
         img_arr = face_recognition.load_image_file(img_path)
         faces = face_recognition.face_locations(img_arr)
-        print(f"[is_valid_id_document] Detected faces: {faces}")
         has_face = len(faces) > 0
-        print(f"[is_valid_id_document] has_face={has_face}")
-        # Print image size and mode for debugging OCR issues
-        print(f"[is_valid_id_document] image.size={image.size}, image.mode={image.mode}")
-        return has_keyword and has_face
+        print(f"[is_valid_id_document] has_mrz={has_mrz}, has_keyword={has_keyword}, has_face={has_face}")
+        return (has_mrz or has_keyword) and has_face
     except Exception as e:
         print("is_valid_id_document error:", e)
         return False
@@ -364,6 +435,8 @@ def validate_id():
     print(f"[validate_id] id_image type: {type(id_image)}")
     print(f"[validate_id] id_image length: {len(id_image) if id_image else 0}")
     print(f"[validate_id] id_image startswith: {id_image[:30] if id_image else 'None'}")
+    # Extra debug: dump first 100 chars to log for inspection
+    print(f"[validate_id] id_image preview: {id_image[:100] if id_image else 'None'}")
     # Extra debug: check for empty or very short base64 string
     if not id_image or len(id_image) < 100:
         print("[validate_id] id_image is empty or too short for a valid image.")
@@ -371,8 +444,11 @@ def validate_id():
     try:
         img_data = decode_image(id_image)
         print(f"[validate_id] Decoded image bytes: {len(img_data)}")
+        # Save a copy for manual inspection if small
         if len(img_data) < 1000:
-            print("[validate_id] Decoded image is too small to be valid.")
+            print("[validate_id] Decoded image is too small to be valid. Saving for inspection as /tmp/validate_id_debug.jpg")
+            with open("/tmp/validate_id_debug.jpg", "wb") as f:
+                f.write(img_data)
             return jsonify({'status': 'fail', 'message': 'Decoded image is too small.'}), 400
     except Exception as e:
         print(f"[validate_id] Error decoding image: {e}")
@@ -424,7 +500,6 @@ def face_register():
             os.remove(id_filepath)
             os.remove(face_filepath)
             return jsonify({'status': 'fail', 'message': 'No ID card detected in first image.'}), 400
-
         try:
             match = compareFaces(face_filepath, id_filepath)
             print("face_register: compareFaces result:", match)
@@ -435,7 +510,6 @@ def face_register():
             import traceback
             traceback.print_exc()
             return jsonify({'status': 'fail', 'message': f'Face comparison error: {str(e)}'}), 400
-
         os.remove(id_filepath)
         os.remove(face_filepath)
         if match:
@@ -444,9 +518,6 @@ def face_register():
         else:
             print(f"face_register: no match in {time.time() - start_time:.2f}s")
             return jsonify({'status': 'fail', 'message': 'Face images do not match.'}), 400
-    except TimeoutException as e:
-        print("face_register: timeout")
-        return jsonify({'status': 'fail', 'message': str(e)}), 504
     except Exception as e:
         print("face_register error:", e)
         import traceback
@@ -467,17 +538,79 @@ def face_login():
 
 @app.route('/api/vocal_register', methods=['POST'])
 def vocal_register():
-    # Accepts: { "audio": base64, "username": str }
-    # TODO: Implement vocal registration logic
-    return jsonify({'status': 'success', 'message': 'Vocal registered (stub)'})
+    # Accepts: { "audio1": base64, "audio2": base64, "catchphrase": str, "username": str }
+    data = request.json
+    if not data or 'audio1' not in data or 'audio2' not in data or 'username' not in data:
+        return jsonify({'status': 'fail', 'message': 'Missing required fields'}), 400
+    username = data['username']
+    audio1 = data['audio1']
+    audio2 = data['audio2']
+    catchphrase = data.get('catchphrase', '')
+
+    # Decode and save both audio files
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as f1, \
+             tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as f2:
+            f1.write(base64.b64decode(audio1))
+            f2.write(base64.b64decode(audio2))
+            f1_path, f2_path = f1.name, f2.name
+
+        # Preprocess and embed both
+        wav1 = preprocess_wav(f1_path)
+        wav2 = preprocess_wav(f2_path)
+        embed1 = voice_encoder.embed_utterance(wav1)
+        embed2 = voice_encoder.embed_utterance(wav2)
+        # Store average embedding for user
+        avg_embed = np.mean([embed1, embed2], axis=0)
+        # Save to DB
+        conn = sqlite3.connect(DB_USERS)
+        c = conn.cursor()
+        c.execute("""
+            UPDATE users SET catchphrase_embedding=? WHERE username=?
+        """, (avg_embed.tobytes(), username))
+        conn.commit()
+        conn.close()
+        os.remove(f1_path)
+        os.remove(f2_path)
+        return jsonify({'status': 'success', 'message': 'Vocal registered'})
+    except Exception as e:
+        return jsonify({'status': 'fail', 'message': f'Vocal registration failed: {str(e)}'}), 500
 
 @app.route('/api/vocal_login', methods=['POST'])
 def vocal_login():
-    # Accepts: { "audio": base64 }
-    # TODO: Implement vocal login logic
-    resp = jsonify({'status': 'success', 'message': 'Vocal login successful (stub)'})
-    resp.set_cookie('token', generate_paseto("demo_user"), httponly=True, samesite='None', secure=True)
-    return resp
+    # Accepts: { "username": str, "catchphrase": base64 or "audio": base64 }
+    data = request.json
+    if not data or 'username' not in data or ('catchphrase' not in data and 'audio' not in data):
+        return jsonify({'status': 'fail', 'message': 'Missing required fields'}), 400
+    username = data['username']
+    # Accept either 'catchphrase' or 'audio' field for backward compatibility
+    audio_b64 = data.get('catchphrase') or data.get('audio')
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as f:
+            f.write(base64.b64decode(audio_b64))
+            audio_path = f.name
+        wav = preprocess_wav(audio_path)
+        embed_login = voice_encoder.embed_utterance(wav)
+        # Retrieve stored embedding
+        conn = sqlite3.connect(DB_USERS)
+        c = conn.cursor()
+        c.execute("SELECT catchphrase_embedding FROM users WHERE username=?", (username,))
+        row = c.fetchone()
+        conn.close()
+        os.remove(audio_path)
+        if not row or not row[0]:
+            return jsonify({'status': 'fail', 'message': 'No catchphrase registered for this user.'}), 401
+        embed_reg = np.frombuffer(row[0], dtype=np.float32)
+        similarity = np.dot(embed_reg, embed_login)
+        if similarity > 0.75:
+            token = generate_paseto(username)
+            resp = jsonify({'status': 'success', 'message': 'Vocal login successful'})
+            resp.set_cookie('token', token, httponly=True, samesite='None', secure=True)
+            return resp
+        else:
+            return jsonify({'status': 'fail', 'message': 'Voice does not match.'}), 401
+    except Exception as e:
+        return jsonify({'status': 'fail', 'message': f'Vocal login failed: {str(e)}'}), 500
 
 @app.route('/api/nav-items')
 def nav_items():
@@ -503,26 +636,34 @@ def compareFaces(uploaded_face_path, id_face_path, tolerance=0.6):
 
 def validateIDDocument(document_path):
     try:
-        image = Image.open(document_path)
-        text = pytesseract.image_to_string(image)
-        print(f"[validateIDDocument] OCR text: {repr(text)}")
+        result = easyocr_reader.readtext(document_path, detail=0, paragraph=True)
+        text = "\n".join(result)
+        print(f"[validateIDDocument] EasyOCR text: {repr(text)}")
+        mrz_text = extract_mrz(text)
+        mrz_info = parse_mrz(mrz_text) if mrz_text else None
+        if mrz_info:
+            print(f"[validateIDDocument] MRZ info: {mrz_info}")
+            has_mrz = True
+        else:
+            has_mrz = False
     except Exception as e:
         print("[validateIDDocument] error:", e)
         return False
     keywords = [
-        'driver', 'license', 'licence', 'id', 'identification',
-        'passport', 'university', 'provisional', 'driving',
-        'identity', 'card', 'british', 'united kingdom', 'uk', 'eu', 'european', 'union', 'number', 'surname', 'given name', 'authority'
+        'passport', 'passpoort', 'passaporto', 'reisepass', 'passeport',
+        'united kingdom', 'britain', 'british', 'citizen', 'surname', 'given', 'name',
+        'date', 'birth', 'expiry', 'issue', 'authority', 'hmpo', 'number', 'code',
+        'type', 'nationality', 'sex', 'male', 'female', 'm', 'f', 'p', 'gbr', 'uk',
+        'driving', 'license', 'licence', 'id', 'identification', 'identity', 'card', 'dvla'
     ]
-    text_lower = text.lower()
-    matched = [word for word in keywords if word in text_lower]
-    print(f"[validateIDDocument] text_lower: {repr(text_lower)}")
-    print(f"[validateIDDocument] matched keywords: {matched}")
-    has_keyword = bool(matched)
-    print(f"[validateIDDocument] has_keyword={has_keyword}")
-    # Print image size and mode for debugging OCR issues
-    print(f"[validateIDDocument] image.size={image.size}, image.mode={image.mode}")
-    return has_keyword
+    found = [word for word in keywords if word in text.lower()]
+    fuzzy_found = sum(
+        difflib.SequenceMatcher(None, word, candidate).ratio() > 0.7
+        for word in keywords for candidate in text.lower().split()
+    )
+    has_keyword = len(found) >= 1 or fuzzy_found >= 2
+    print(f"[validateIDDocument] has_mrz={has_mrz}, has_keyword={has_keyword}")
+    return has_mrz or has_keyword
 
 @app.route('/api/check_db', methods=['GET'])
 def check_db():
@@ -535,6 +676,9 @@ def check_db():
         return jsonify({'status': 'success', 'users_table_exists': exists})
     except Exception as e:
         return jsonify({'status': 'fail', 'error': str(e)}), 500
+
+# Initialize voice encoder once
+voice_encoder = VoiceEncoder()
 
 if __name__ == '__main__':
     try:

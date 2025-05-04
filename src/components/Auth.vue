@@ -45,6 +45,11 @@ const overlay = ref(null);
 const showWebcamModal = ref(false);
 const registerStep = ref('id'); // or 'face', etc.
 
+// Fix: Use correct state for registration (username, idImage, faceImage)
+const registerUsername = ref('');
+const idImage = ref(null);
+const faceImage = ref(null);
+
 // Change: Use relative URL for registration endpoint
 async function handleRegister() {
   status.value = 'Registering...';
@@ -86,7 +91,7 @@ async function fetchUser() {
   }
 }
 
-// Change: In faceRegisterWithImages, use relative URL for face register endpoint
+// Fix: Use correct registration fields for faceRegisterWithImages
 async function faceRegisterWithImages() {
   status.value = 'Registering with ID and face...';
   try {
@@ -166,6 +171,31 @@ watch(showWebcamModal, async (isOpen) => {
     }
   }
 });
+
+// Fix: Add captureImage logic for webcam capture (ID/face)
+function captureImage() {
+  if (!video.value || !overlay.value) return;
+  const canvasEl = document.createElement('canvas');
+  canvasEl.width = video.value.videoWidth;
+  canvasEl.height = video.value.videoHeight;
+  const ctx = canvasEl.getContext('2d');
+  ctx.drawImage(video.value, 0, 0, canvasEl.width, canvasEl.height);
+  const dataUrl = canvasEl.toDataURL('image/jpeg');
+  if (registerStep.value === 'id') {
+    idImage.value = dataUrl;
+    registerStep.value = 'face';
+  } else if (registerStep.value === 'face') {
+    faceImage.value = dataUrl;
+    showWebcamModal.value = false;
+    // Optionally, call faceRegisterWithImages() here or on submit
+  }
+}
+
+// Fix: Add missing closeWebcamModal
+function closeWebcamModal() {
+  showWebcamModal.value = false;
+  // Optionally stop webcam stream if needed
+}
 </script>
 
 <style scoped>

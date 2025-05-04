@@ -57,3 +57,6 @@ eth-account
 imagehash
 pytesseract
 onnxruntime
+tesseract
+easyocr
+python-mrz

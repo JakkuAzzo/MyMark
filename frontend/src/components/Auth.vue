@@ -74,7 +74,45 @@
             <button v-if="faceImage && idImage && faceMatch === true" @click="submitFaceRegister" class="cubist-btn">
               Submit Registration
             </button>
-            <button @click="openVocalRegister" class="cubist-btn vocal-btn">Catchphrase Register</button>
+            <!-- Optional: Catchphrase register as additional measure -->
+            <div style="margin-top:18px;">
+              <label><b>Optional: Add a catchphrase for extra account security</b></label>
+              <button @click="openVocalRegister" class="cubist-btn vocal-btn">Catchphrase Register (Optional)</button>
+              <div v-if="catchphraseWords.length">
+                <p>
+                  <b>Your catchphrase:</b>
+                  <span style="font-family:monospace;">{{ catchphraseWords.join(' ') }}</span>
+                  <br>
+                  <small>Record this phrase twice, in two different styles. Keep it safe as a backup password.</small>
+                </p>
+                <div v-for="(rec, idx) in catchphraseRecordings" :key="idx" style="margin-bottom:8px;">
+                  <audio :src="rec.url" controls style="margin-top:8px;"></audio>
+                  <button @click="deleteCatchphraseRecording(idx)" class="cubist-btn" style="margin-left:8px;">Delete</button>
+                  <span v-if="rec.style">({{ rec.style }})</span>
+                </div>
+                <div v-if="catchphraseRecordings.length < 2">
+                  <button
+                    @click="startCatchphraseRecording('normal')"
+                    class="cubist-btn"
+                    :disabled="recording"
+                  >
+                    Record (normal)
+                  </button>
+                  <button
+                    @click="startCatchphraseRecording('funny')"
+                    class="cubist-btn"
+                    :disabled="recording"
+                  >
+                    Record (funny/other style)
+                  </button>
+                  <div v-if="recording" class="catchphrase-recording-indicator">
+                    <span class="recording-dot"></span>
+                    Recording... {{ recordCountdown }}s left
+                  </div>
+                </div>
+                <button v-if="catchphraseRecordings.length === 2" @click="submitVocal" class="cubist-btn">Submit Catchphrase</button>
+              </div>
+            </div>
           </div>
         </div>
       </transition>
@@ -83,12 +121,34 @@
         <p>Please allow webcam and/or microphone access for face/catchphrase authentication.</p>
       </div>
       <!-- Webcam Modal for Login/Register -->
-      <div v-if="showWebcamModal" class="modal cubist-modal-bg">
+      <div v-if="showWebcamModal" class="modal cubist-modal-bg" style="position:relative;">
         <div class="modal-content cubist-modal" style="position:relative;">
           <div style="position: relative; display: inline-block;">
             <video ref="video" autoplay playsinline width="320" height="240" style="background:#222; display:block; z-index:1;"></video>
             <canvas ref="overlay" width="320" height="240"
               style="position:absolute; top:0; left:0; pointer-events:none; z-index:2;"></canvas>
+            <!-- Live detection status box (top right) -->
+            <div
+              style="position:absolute; top:8px; right:8px; z-index:10; background:rgba(255,255,255,0.95); border-radius:8px; padding:8px 14px; border:2px solid #111; min-width:120px; text-align:left; font-size:1em;">
+              <div>
+                <span :style="{color: ageDetected ? '#0a0' : '#a00', fontWeight:'bold'}">
+                  ●
+                </span>
+                Age:
+                <span :style="{color: ageDetected ? '#0a0' : '#a00', fontWeight:'bold'}">
+                  {{ detectedAge !== null ? detectedAge : '--' }}
+                </span>
+              </div>
+              <div>
+                <span :style="{color: idDetected ? '#0a0' : '#a00', fontWeight:'bold'}">
+                  ●
+                </span>
+                ID:
+                <span :style="{color: idDetected ? '#0a0' : '#a00', fontWeight:'bold'}">
+                  {{ idDetected ? 'Detected' : 'Not Detected' }}
+                </span>
+              </div>
+            </div>
           </div>
           <div v-if="registerStep === 'id'">
             <p>Show your identification document to the camera, then click Capture.</p>
@@ -208,7 +268,7 @@ async function ensureModelsLoaded() {
       faceapi.nets.faceLandmark68TinyNet.loadFromUri('/models'),
       faceapi.nets.faceRecognitionNet.loadFromUri('/models'),
       faceapi.nets.faceExpressionNet.loadFromUri('/models'),
-      faceapi.nets.ageGenderNet.loadFromUri('/models')
+      faceapi.nets.ageGenderNet.loadFromUri('/models') // needed for age
     ]);
     await modelsLoadingPromise;
     modelsLoaded = true;
@@ -471,7 +531,8 @@ function captureImage() {
       fetch('/api/validate_id', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id_image: dataUrl })
+        body: JSON.stringify({ id_image: dataUrl }),
+        credentials: 'include'
       })
       .then(res => res.json())
       .then(data => {
@@ -603,22 +664,72 @@ function stopRecording() {
   }
 }
 
+// Helper: Convert webm Blob to wav Blob using AudioContext
+async function blobToWav(blob) {
+  const arrayBuffer = await blob.arrayBuffer();
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+  // Encode to WAV (PCM 16-bit LE)
+  const wavBuffer = encodeWAV(audioBuffer);
+  audioCtx.close();
+  return new Blob([wavBuffer], { type: 'audio/wav' });
+}
+
+// WAV encoding helper (PCM 16-bit LE, mono)
+function encodeWAV(audioBuffer) {
+  const numChannels = 1;
+  const sampleRate = audioBuffer.sampleRate;
+  const samples = audioBuffer.getChannelData(0);
+  const buffer = new ArrayBuffer(44 + samples.length * 2);
+  const view = new DataView(buffer);
+
+  function writeString(view, offset, string) {
+    for (let i = 0; i < string.length; i++) {
+      view.setUint8(offset + i, string.charCodeAt(i));
+    }
+  }
+
+  writeString(view, 0, 'RIFF');
+  view.setUint32(4, 36 + samples.length * 2, true);
+  writeString(view, 8, 'WAVE');
+  writeString(view, 12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * numChannels * 2, true);
+  view.setUint16(32, numChannels * 2, true);
+  view.setUint16(34, 16, true);
+  writeString(view, 36, 'data');
+  view.setUint32(40, samples.length * 2, true);
+
+  // PCM samples
+  let offset = 44;
+  for (let i = 0; i < samples.length; i++, offset += 2) {
+    let s = Math.max(-1, Math.min(1, samples[i]));
+    view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+  }
+  return buffer;
+}
+
 async function submitVocal() {
   status.value = 'Submitting catchphrase...';
   if (catchphraseRecordings.value.length !== 2) {
     status.value = 'Please record both catchphrase styles.';
     return;
   }
-  // Save catchphraseWords.value as backup (e.g., localStorage or backend)
   localStorage.setItem('catchphrase_backup', catchphraseBackup.value);
 
-  // Send both recordings and the phrase to backend
+  // Convert both blobs to WAV and base64 encode
   const blobs = await Promise.all(
-    catchphraseRecordings.value.map(rec => new Promise(resolve => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result.split(',')[1]);
-      reader.readAsDataURL(rec.blob);
-    }))
+    catchphraseRecordings.value.map(async rec => {
+      const wavBlob = await blobToWav(rec.blob);
+      return new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result.split(',')[1]);
+        reader.readAsDataURL(wavBlob);
+      });
+    })
   );
   try {
     const res = await fetch('/api/vocal_register', {
@@ -634,8 +745,10 @@ async function submitVocal() {
     });
     const data = await res.json();
     status.value = data.message || 'Catchphrase registration failed.';
+    // Only call fetchUser if registration was successful
     if (data.status === 'success') {
-      await fetchUser();
+      // Do not call fetchUser() here, as user is not logged in by catchphrase registration
+      // Instead, show a success message and let user proceed to login
     }
   } catch {
     status.value = 'Catchphrase registration failed (network error).';
@@ -721,7 +834,8 @@ function onIdFileChange(e) {
     const res = await fetch('/api/validate_id', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id_image: idImage.value })
+      body: JSON.stringify({ id_image: idImage.value }),
+      credentials: 'include'
     });
     const data = await res.json();
     if (data.status !== 'success') {
@@ -752,21 +866,58 @@ function detectionLoop() {
     return;
   }
   faceapi.matchDimensions(overlay.value, displaySize);
+
   const detect = async () => {
     if (!video.value || !overlay.value || video.value.readyState < 2) {
       requestAnimationFrame(detect);
       return;
     }
+    // Detect faces with age/gender
     const detections = await faceapi
       .detectAllFaces(video.value, new faceapi.TinyFaceDetectorOptions())
-      .withFaceLandmarks(true);
+      .withFaceLandmarks(true)
+      .withAgeAndGender();
     const resized = faceapi.resizeResults(detections, displaySize);
-    if (!ctx) return;
     ctx.clearRect(0, 0, overlay.value.width, overlay.value.height);
     if (resized && resized.length > 0) {
       faceapi.draw.drawDetections(overlay.value, resized);
       faceapi.draw.drawFaceLandmarks(overlay.value, resized);
+      // Age detection: use first face
+      const age = resized[0]?.age;
+      detectedAge.value = age ? Math.round(age) : null;
+      ageDetected.value = !!age;
+    } else {
+      detectedAge.value = null;
+      ageDetected.value = false;
     }
+
+    // --- Live ID document detection (OCR) ---
+    // Only run every ~1s to avoid lag
+    if (!detect._lastIdCheck || Date.now() - detect._lastIdCheck > 1000) {
+      detect._lastIdCheck = Date.now();
+      // Grab current frame as image
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = video.value.videoWidth;
+      tempCanvas.height = video.value.videoHeight;
+      const tempCtx = tempCanvas.getContext('2d');
+      tempCtx.drawImage(video.value, 0, 0, tempCanvas.width, tempCanvas.height);
+      const dataUrl = tempCanvas.toDataURL('image/jpeg');
+      // Send to backend for OCR/ID check (async, don't block UI)
+      fetch('/api/validate_id', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id_image: dataUrl }),
+        credentials: 'include'
+      })
+      .then(res => res.json())
+      .then(data => {
+        idDetected.value = data.status === 'success';
+      })
+      .catch(() => {
+        idDetected.value = false;
+      });
+    }
+
     requestAnimationFrame(detect);
   };
   detect();
@@ -788,11 +939,16 @@ watch(showWebcamModal, async (isOpen) => {
 });
 
 // --- Catchphrase logic with random words, two styles, playback, delete ---
+const detectedAge = ref(null);
+const ageDetected = ref(false);
+const idDetected = ref(false);
 const catchphraseWords = ref([]);
 const catchphraseRecordings = ref([]); // {url, blob, style}
 const catchphraseBackup = ref('');
 let catchphraseMediaRecorder = null;
 let catchphraseChunks = [];
+const recordCountdown = ref(3);
+let recordTimer = null;
 
 function generateCatchphraseWords() {
   // Example word list; use a larger list in production
@@ -807,7 +963,7 @@ function generateCatchphraseWords() {
 }
 
 function startCatchphraseRecording(style) {
-  if (!catchphraseWords.value.length) return;
+  if (!catchphraseWords.value.length || recording.value) return;
   navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
     catchphraseMediaRecorder = new window.MediaRecorder(stream);
     catchphraseChunks = [];
@@ -817,15 +973,22 @@ function startCatchphraseRecording(style) {
       const url = URL.createObjectURL(blob);
       catchphraseRecordings.value.push({ url, blob, style });
       stream.getTracks().forEach(track => track.stop());
+      recording.value = false;
+      recordCountdown.value = 3;
+      clearInterval(recordTimer);
     };
     catchphraseMediaRecorder.start();
     recording.value = true;
-    setTimeout(() => {
-      if (catchphraseMediaRecorder && recording.value) {
-        catchphraseMediaRecorder.stop();
-        recording.value = false;
+    recordCountdown.value = 3;
+    recordTimer = setInterval(() => {
+      recordCountdown.value -= 1;
+      if (recordCountdown.value <= 0) {
+        if (catchphraseMediaRecorder && recording.value) {
+          catchphraseMediaRecorder.stop();
+        }
+        clearInterval(recordTimer);
       }
-    }, 3000);
+    }, 1000);
   });
 }
 
@@ -1020,5 +1183,26 @@ body {
   background: #ffe082;
   color: #111;
   border: 2px solid #fbc02d;
+}
+.catchphrase-recording-indicator {
+  margin-top: 10px;
+  font-weight: bold;
+  color: #e53935;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.recording-dot {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  background: #e53935;
+  border-radius: 50%;
+  margin-right: 6px;
+  animation: blink 1s infinite;
+}
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
 }
 </style>
