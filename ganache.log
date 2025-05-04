@@ -63,3 +63,9 @@ web3_clientVersion
 web3_clientVersion
 web3_clientVersion
 web3_clientVersion
+
+Received shutdown signal: SIGTERM
+Shutting down…
+
+Received shutdown signal: SIGTERM
+Server has been shut down

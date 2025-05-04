@@ -272,12 +272,11 @@ def facenet_embedding(img_path):
 @app.route('/api/register', methods=['POST'])
 def register():
     data = request.json
-    # Required: username, id_image (base64), face_image (base64), optional: catchphrase
+    # Required: username, id_image (base64), face_image (base64), optional: catchphrase_embedding (base64)
     if not data or 'username' not in data or 'id_image' not in data or 'face_image' not in data:
         return jsonify({'status': 'fail', 'message': 'Missing required fields (username, id_image, face_image)'}), 400
 
     username = data['username']
-    catchphrase = data.get('catchphrase', None)
     id_img_data = base64.b64decode(data['id_image'].split(',')[1] if ',' in data['id_image'] else data['id_image'])
     face_img_data = base64.b64decode(data['face_image'].split(',')[1] if ',' in data['face_image'] else data['face_image'])
 
@@ -319,21 +318,34 @@ def register():
 
     # e. Store in users DB
     try:
+        # Accept optional catchphrase_embedding (base64)
+        catchphrase_embedding = None
+        if 'catchphrase_embedding' in data and data['catchphrase_embedding']:
+            try:
+                catchphrase_embedding = base64.b64decode(data['catchphrase_embedding'])
+            except Exception as e:
+                print("register: failed to decode catchphrase_embedding:", e)
+                catchphrase_embedding = None
+
         conn = sqlite3.connect(DB_USERS)
         c = conn.cursor()
         c.execute("""
             INSERT INTO users (username, face_embedding, catchphrase_embedding)
             VALUES (?, ?, ?)
-        """, (username, embedding, catchphrase.encode('utf-8') if catchphrase else None))
+        """, (username, embedding, catchphrase_embedding))
         conn.commit()
         conn.close()
         token = generate_paseto(username)
         resp = jsonify({'status': 'success', 'message': 'User registered'})
         resp.set_cookie('token', token, httponly=True, samesite='None', secure=True)
         return resp
-    except sqlite3.IntegrityError:
+    except sqlite3.IntegrityError as e:
+        print("register: IntegrityError", e)
         return jsonify({'status': 'fail', 'message': 'Username already exists'}), 400
     except Exception as e:
+        print("register: Exception", e)
+        import traceback
+        traceback.print_exc()
         return jsonify({'status': 'fail', 'message': f'Registration failed: {str(e)}'}), 500
 
 @app.route('/api/login', methods=['POST'])
@@ -469,9 +481,6 @@ def validate_id():
 def face_register():
     import time
     start_time = time.time()
-    # Remove signal.signal usage (not allowed in Flask dev server threads)
-    # signal.signal(signal.SIGALRM, timeout_handler)
-    # signal.alarm(20)
     try:
         data = request.json
         print("face_register: received data:", data)
@@ -510,12 +519,55 @@ def face_register():
             import traceback
             traceback.print_exc()
             return jsonify({'status': 'fail', 'message': f'Face comparison error: {str(e)}'}), 400
-        os.remove(id_filepath)
-        os.remove(face_filepath)
+
+        # --- NEW: Actually create the user in the users DB if match is True ---
         if match:
+            # Generate FaceNet embedding for the face image
+            embedding = facenet_embedding(face_filepath)
+            if embedding is None:
+                os.remove(id_filepath)
+                os.remove(face_filepath)
+                return jsonify({'status': 'fail', 'message': 'Could not generate FaceNet embedding.'}), 400
+
+            # Accept optional catchphrase_embedding (base64)
+            catchphrase_embedding = None
+            if 'catchphrase_embedding' in data and data['catchphrase_embedding']:
+                try:
+                    catchphrase_embedding = base64.b64decode(data['catchphrase_embedding'])
+                except Exception as e:
+                    print("face_register: failed to decode catchphrase_embedding:", e)
+                    catchphrase_embedding = None
+
+            try:
+                conn = sqlite3.connect(DB_USERS)
+                c = conn.cursor()
+                c.execute("""
+                    INSERT INTO users (username, face_embedding, catchphrase_embedding)
+                    VALUES (?, ?, ?)
+                """, (data['username'], embedding, catchphrase_embedding))
+                conn.commit()
+                conn.close()
+                print(f"face_register: user {data['username']} created in DB.")
+            except sqlite3.IntegrityError as e:
+                print("face_register: IntegrityError", e)
+                os.remove(id_filepath)
+                os.remove(face_filepath)
+                return jsonify({'status': 'fail', 'message': 'Username already exists'}), 400
+            except Exception as e:
+                print("face_register: Exception", e)
+                import traceback
+                traceback.print_exc()
+                os.remove(id_filepath)
+                os.remove(face_filepath)
+                return jsonify({'status': 'fail', 'message': f'Registration failed: {str(e)}'}), 500
+
+            os.remove(id_filepath)
+            os.remove(face_filepath)
             print(f"face_register: success in {time.time() - start_time:.2f}s")
-            return jsonify({'status': 'success', 'message': 'Face images match.'})
+            return jsonify({'status': 'success', 'message': 'Face images match. User registered.'})
         else:
+            os.remove(id_filepath)
+            os.remove(face_filepath)
             print(f"face_register: no match in {time.time() - start_time:.2f}s")
             return jsonify({'status': 'fail', 'message': 'Face images do not match.'}), 400
     except Exception as e:
@@ -524,7 +576,6 @@ def face_register():
         traceback.print_exc()
         return jsonify({'status': 'fail', 'message': f'Internal error: {str(e)}'}), 500
     finally:
-        # signal.alarm(0)  # Remove alarm usage
         pass
 
 @app.route('/api/face_login', methods=['POST'])

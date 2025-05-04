@@ -66,7 +66,7 @@ onMounted(async () => {
 });
 </script>
 
-<style lang="css" scoped>
+<style scoped>
 .cubist-card {
   background: #fff;
   border: 4px solid #111;
@@ -77,6 +77,7 @@ onMounted(async () => {
   max-width: 420px;
   min-width: 320px;
   text-align: center;
+  color: #111;
 }
 .cubist-title {
   font-family: 'Montserrat', 'Arial', sans-serif;
@@ -125,48 +126,26 @@ onMounted(async () => {
   font-weight: bold;
   min-height: 24px;
 }
-.navbar {
-  display: flex;
-  align-items: center;
-  background: #fff;
-  border-bottom: 4px solid #222;
-  box-shadow: 0 4px 0 #bbb, 0 0 0 8px #fff inset;
-  padding: 12px 24px;
-  margin-bottom: 32px;
+@media (max-width: 600px) {
+  .cubist-card {
+    max-width: 98vw;
+    min-width: 0;
+    padding: 18px 6px 18px 6px;
+    margin: 12px auto;
+  }
+  .cubist-title {
+    font-size: 1.3em;
+  }
+  .cubist-form {
+    gap: 10px;
+  }
 }
-.nav-links {
-  flex: 1;
-  display: flex;
-  gap: 16px;
-}
-.logo {
-  display: block;
-  margin: 0 16px 0 0;
-  width: 40px;
-  height: 40px;
-}
-.cubist-username {
-  color: #fff;
-  background: #111;
-  border: 2px solid #fff;
-  padding: 8px 18px;
-  font-weight: bold;
-  border-radius: 0;
-  margin-left: 16px;
-  box-shadow: 2px 2px 0 #bbb;
-}
-.nav-tooltip {
-  position: absolute;
-  left: 50%;
-  top: 120%;
-  transform: translateX(-50%);
-  background: #fff;
-  color: #333;
-  padding: 6px 12px;
-  border-radius: 6px;
-  box-shadow: 0 2px 8px #0002;
-  white-space: nowrap;
-  font-size: 0.95em;
-  z-index: 10;
+@media (min-width: 601px) and (max-width: 900px) {
+  .cubist-card {
+    max-width: 90vw;
+    min-width: 0;
+    padding: 28px 12px 28px 12px;
+    margin: 24px auto;
+  }
 }
 </style>

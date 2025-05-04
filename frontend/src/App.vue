@@ -17,7 +17,7 @@
     <Upload v-else-if="page === 'upload'" />
     <Matches v-else-if="page === 'matches'" />
     <Stats v-else-if="page === 'stats'" />
-    <Auth v-else-if="page === 'auth'" />
+    <Auth v-else-if="page === 'auth'" :activePage="page" />
     <Cubist404 v-else @goHome="page = 'dashboard'" />
   </div>
 </template>
