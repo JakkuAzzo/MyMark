@@ -31,12 +31,14 @@ export const useAuthStore = defineStore('auth', () => {
   // --- Methods expected by UI ---
   function openWebcamModal(step) {
     showWebcamModal.value = true;
-    registerStep.value = step;
+    if (registerStep.value !== step) {
+      registerStep.value = step;
+    }
     showWebcamPrompt.value = false;
   }
   function closeWebcamModal() {
     showWebcamModal.value = false;
-    registerStep.value = '';
+    // Do NOT reset registerStep here!
   }
   function openVocalRegister() {
     showVocalModal.value = true;

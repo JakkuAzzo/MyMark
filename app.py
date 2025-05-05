@@ -193,6 +193,7 @@ def parse_mrz(mrz_text):
     return None
 
 def is_valid_id_document(img_path):
+    """Require MRZ (if present), at least one strong keyword, and a face in the ID region."""
     try:
         # Use EasyOCR for robust text extraction
         result = easyocr_reader.readtext(img_path, detail=0, paragraph=True)
@@ -201,12 +202,8 @@ def is_valid_id_document(img_path):
         # Try to extract and parse MRZ
         mrz_text = extract_mrz(text)
         mrz_info = parse_mrz(mrz_text) if mrz_text else None
-        if mrz_info:
-            print(f"[is_valid_id_document] MRZ info: {mrz_info}")
-            has_mrz = True
-        else:
-            has_mrz = False
-        # Fallback: keyword search if no MRZ
+        has_mrz = bool(mrz_info)
+        # Require at least one strong keyword
         keywords = [
             'passport', 'passpoort', 'passaporto', 'reisepass', 'passeport',
             'united kingdom', 'britain', 'british', 'citizen', 'surname', 'given', 'name',
@@ -220,25 +217,56 @@ def is_valid_id_document(img_path):
             for word in keywords for candidate in text.lower().split()
         )
         has_keyword = len(found) >= 1 or fuzzy_found >= 2
+        # Require a face in the document
         img_arr = face_recognition.load_image_file(img_path)
         faces = face_recognition.face_locations(img_arr)
         has_face = len(faces) > 0
         print(f"[is_valid_id_document] has_mrz={has_mrz}, has_keyword={has_keyword}, has_face={has_face}")
-        return (has_mrz or has_keyword) and has_face
+        # All must be true: if MRZ present, it must be valid; must have keyword; must have face
+        return (not mrz_text or has_mrz) and has_keyword and has_face
     except Exception as e:
         print("is_valid_id_document error:", e)
         return False
 
 def is_real_face(img_path):
-    # Heuristic: check for face, and optionally anti-spoofing (liveness)
+    """Check for a real, live face using ONNX anti-spoofing model (Silent-Face-Anti-Spoofing)."""
     try:
-        img_arr = face_recognition.load_image_file(img_path)
-        faces = face_recognition.face_locations(img_arr)
-        if len(faces) == 0:
+        img = cv2.imread(img_path)
+        if img is None:
+            print("[is_real_face] Could not read image.")
             return False
-        # Optionally: check for screen glare, moire, or printout artifacts (stub)
-        # For demo, just check face exists
-        return True
+        # Load ONNX liveness model (Silent-Face-Anti-Spoofing)
+        model_path = os.path.join(os.getcwd(), "liveness_model", "onnx_models", "2.7_80x80_MiniFASNetV2.onnx")
+        if not os.path.exists(model_path):
+            print(f"[is_real_face] Liveness model not found at {model_path}")
+            return False
+        # Preprocess: crop center, resize to 80x80, BGR->RGB, normalize
+        h, w = img.shape[:2]
+        min_dim = min(h, w)
+        startx = w//2 - (min_dim//2)
+        starty = h//2 - (min_dim//2)
+        crop = img[starty:starty+min_dim, startx:startx+min_dim]
+        crop = cv2.resize(crop, (80, 80))
+        crop = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
+        crop = crop.astype(np.float32) / 255.0
+        crop = (crop - 0.5) / 0.5  # normalize to [-1, 1]
+        input_blob = np.transpose(crop, (2, 0, 1))[None, ...]
+        # Run ONNX model
+        ort_sess = ort.InferenceSession(model_path, providers=["CPUExecutionProvider"])
+        outputs = ort_sess.run(None, {ort_sess.get_inputs()[0].name: input_blob})
+        liveness_score = float(outputs[1][0][0]) if len(outputs) > 1 else float(outputs[0][0][0])
+        print(f"[is_real_face] Liveness score: {liveness_score}")
+        # Threshold: >0.5 is live, <=0.5 is spoof
+        if liveness_score > 0.5:
+            # Also check for face presence
+            faces = face_recognition.face_locations(img)
+            if len(faces) == 0:
+                print("[is_real_face] No face detected.")
+                return False
+            return True
+        else:
+            print("[is_real_face] Liveness score below threshold.")
+            return False
     except Exception as e:
         print("is_real_face error:", e)
         return False
@@ -739,6 +767,25 @@ def check_db():
 
 # Initialize voice encoder once
 voice_encoder = VoiceEncoder()
+
+@app.route('/api/liveness_check', methods=['POST'])
+def liveness_check():
+    data = request.json
+    if not data or 'face_image' not in data:
+        return jsonify({'status': 'fail', 'message': 'Missing face_image'}), 400
+    try:
+        img_data = decode_image(data['face_image'])
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as face_file:
+            face_file.write(img_data)
+            face_path = face_file.name
+        is_live = is_real_face(face_path)
+        os.remove(face_path)
+        if is_live:
+            return jsonify({'status': 'success', 'message': 'Liveness confirmed.'})
+        else:
+            return jsonify({'status': 'fail', 'message': 'Liveness not confirmed.'}), 400
+    except Exception as e:
+        return jsonify({'status': 'fail', 'message': f'Liveness check error: {str(e)}'}), 500
 
 if __name__ == '__main__':
     try:

@@ -5,10 +5,9 @@
         {{ webcamError || modelError }}
         <button class="cubist-btn" @click="retryWebcam">Retry</button>
       </div>
-      <div v-else style="position: relative; display: inline-block;">
-        <video ref="video" autoplay playsinline width="320" height="240" style="background:#222; display:block; z-index:1;"></video>
-        <canvas ref="overlay" width="320" height="240"
-          style="position:absolute; top:0; left:0; pointer-events:none; z-index:2;"></canvas>
+      <div v-else class="webcam-video-container">
+        <video ref="video" autoplay playsinline muted style="background:#222;"></video>
+        <canvas ref="overlay"></canvas>
         <div style="position:absolute; top:8px; right:8px; z-index:10; background:rgba(255,255,255,0.95); border-radius:8px; padding:8px 14px; border:2px solid #111; min-width:120px; text-align:left; font-size:1em;">
           <div>
             <span :style="{color: auth.ageDetected ? '#0a0' : '#a00', fontWeight:'bold'}">●</span>
@@ -27,6 +26,13 @@
       </div>
       <div v-else-if="auth.registerStep === 'face'">
         <p>Now show your face to the camera, then click Capture.</p>
+        <div style="margin:8px 0;">
+          <span>Liveness: </span>
+          <span v-if="livenessStatus==='checking'">Checking...</span>
+          <span v-else-if="livenessStatus==='live'" style="color:#43a047;font-weight:bold;">Live</span>
+          <span v-else-if="livenessStatus==='not_live'" style="color:#e53935;font-weight:bold;">Not Live</span>
+          <span v-else style="color:#888;">Unknown</span>
+        </div>
       </div>
       <div v-else>
         <p>Show your face to the camera, then click Capture.</p>
@@ -47,10 +53,49 @@ const overlay = ref(null);
 const webcamError = ref('');
 const modelError = ref('');
 const autoCaptured = ref(false);
+const livenessStatus = ref('unknown'); // 'unknown', 'checking', 'live', 'not_live'
 let stream = null;
 let detectionInterval = null;
 let faceapiLoaded = false;
 let lastIdCheck = 0;
+
+// --- Registration session persistence ---
+function saveSession() {
+  localStorage.setItem('registerStep', auth.registerStep);
+  if (auth.idImage) localStorage.setItem('idImage', auth.idImage);
+  if (auth.faceImage) localStorage.setItem('faceImage', auth.faceImage);
+}
+function restoreSession() {
+  const step = localStorage.getItem('registerStep');
+  if (step) auth.setRegisterStep(step);
+  const idImg = localStorage.getItem('idImage');
+  if (idImg) auth.idImage = idImg;
+  const faceImg = localStorage.getItem('faceImage');
+  if (faceImg) auth.faceImage = faceImg;
+}
+
+watch(() => auth.registerStep, saveSession);
+watch(() => auth.idImage, saveSession);
+watch(() => auth.faceImage, saveSession);
+
+onMounted(() => {
+  restoreSession();
+  if (auth.showWebcamModal) {
+    startWebcam();
+  }
+});
+
+onBeforeUnmount(() => {
+  stopWebcam();
+});
+
+watch(() => auth.showWebcamModal, (val) => {
+  if (val) {
+    startWebcam();
+  } else {
+    stopWebcam();
+  }
+});
 
 async function loadFaceApiModels() {
   try {
@@ -148,13 +193,37 @@ async function startDetectionLoop() {
             });
         }
       } else if (auth.registerStep === 'face') {
-        // Auto-capture face if detected and not already captured
-        if (!autoCaptured.value) {
-          autoCaptured.value = true;
-          setTimeout(() => {
-            captureImage();
-            auth.setRegisterStep('catchphrase');
-          }, 400);
+        // --- Liveness check before auto-capture ---
+        if (!autoCaptured.value && livenessStatus.value !== 'live') {
+          livenessStatus.value = 'checking';
+          const tempCanvas = document.createElement('canvas');
+          tempCanvas.width = video.value.videoWidth || 320;
+          tempCanvas.height = video.value.videoHeight || 240;
+          tempCanvas.getContext('2d').drawImage(video.value, 0, 0, tempCanvas.width, tempCanvas.height);
+          const dataUrl = tempCanvas.toDataURL('image/jpeg', 0.95);
+          fetch('/api/liveness_check', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ face_image: dataUrl })
+          })
+            .then(res => res.json())
+            .then(data => {
+              if (data.status === 'success') {
+                livenessStatus.value = 'live';
+                setTimeout(() => {
+                  if (!autoCaptured.value) {
+                    autoCaptured.value = true;
+                    auth.faceImage = dataUrl;
+                    closeModal();
+                  }
+                }, 400);
+              } else {
+                livenessStatus.value = 'not_live';
+              }
+            })
+            .catch(() => {
+              livenessStatus.value = 'not_live';
+            });
         }
       }
     } else {
@@ -163,6 +232,7 @@ async function startDetectionLoop() {
       auth.idDetected = false;
       if (overlay.value) overlay.value.getContext('2d').clearRect(0, 0, overlay.value.width, overlay.value.height);
       autoCaptured.value = false;
+      livenessStatus.value = 'unknown';
     }
   }, 200);
 }
@@ -216,11 +286,18 @@ function captureImage() {
     auth.idImage = dataUrl;
     auth.status = 'Valid ID Card captured!';
     auth.statusColor = '#43a047';
-    // Optionally, close modal or advance step here
     closeModal();
+    // Progress to face step after ID capture
+    setTimeout(() => {
+      auth.setRegisterStep('face');
+    }, 200);
   } else if (auth.registerStep === 'face') {
     auth.faceImage = dataUrl;
     closeModal();
+    // Progress to next step (e.g., catchphrase or submit)
+    setTimeout(() => {
+      auth.setRegisterStep('catchphrase');
+    }, 200);
   }
 }
 
@@ -235,24 +312,6 @@ function retryWebcam() {
   stopWebcam();
   startWebcam();
 }
-
-onMounted(() => {
-  if (auth.showWebcamModal) {
-    startWebcam();
-  }
-});
-
-onBeforeUnmount(() => {
-  stopWebcam();
-});
-
-watch(() => auth.showWebcamModal, (val) => {
-  if (val) {
-    startWebcam();
-  } else {
-    stopWebcam();
-  }
-});
 </script>
 <style scoped>
 .cubist-modal-bg.webcam-modal-overlay {
@@ -276,13 +335,50 @@ watch(() => auth.showWebcamModal, (val) => {
   align-items: center;
   box-shadow: 8px 8px 0 #bbb, 0 0 0 8px #fff inset;
 }
-video, canvas {
-  width: 100% !important;
-  height: auto !important;
+.webcam-video-container {
+  position: relative;
+  width: 100%;
   max-width: 400px;
+  aspect-ratio: 4/3;
+  background: #222;
+  border-radius: 12px;
+  overflow: hidden;
+  margin: 0 auto 12px auto;
+}
+.webcam-video-container video,
+.webcam-video-container canvas {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover;
+  display: block;
   border-radius: 12px;
   background: #222;
+}
+.webcam-video-container video {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover;
   display: block;
+  border-radius: 12px;
+  background: #444 !important;
+  z-index: 1;
+  border: 2px solid #0af; /* debug: blue border */
+  opacity: 1 !important;
+}
+.webcam-video-container canvas {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100% !important;
+  height: 100% !important;
+  pointer-events: none;
+  border-radius: 12px;
+  background: transparent !important;
+  z-index: 2;
+  opacity: 1 !important;
 }
 .cubist-modal-content > *:not(:last-child) {
   margin-bottom: 12px;
