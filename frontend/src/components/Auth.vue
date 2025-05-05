@@ -1,7 +1,6 @@
 <template>
   <div class="auth-root">
-    <!-- Removed local navbar. Only global navbar in App.vue should be shown. -->
-
+    <!-- Info Modal -->
     <div v-if="auth.activePage==='info'" class="cubist-modal-bg">
       <div class="cubist-modal">
         <img src="/MyMark.svg" alt="MyMark Logo" class="logo info-logo" />
@@ -21,12 +20,13 @@
       </div>
     </div>
 
+    <!-- Auth Cards (Login/Register) -->
     <div v-if="!auth.loggedIn && auth.activePage==='auth'" class="auth-container cubist-card">
       <img src="/MyMark.svg" alt="MyMark Logo" class="logo" />
       <h2 class="cubist-title">Welcome to My Mark</h2>
       <div class="auth-tabs cubist-tabs">
-        <button :class="['cubist-btn', auth.tab==='login' && 'active']" @click="auth.tab='login'">Login</button>
-        <button :class="['cubist-btn', auth.tab==='register' && 'active']" @click="auth.tab='register'">Register</button>
+        <button :class="['cubist-btn', auth.tab==='login' ? 'active' : 'inactive']" @click="auth.tab='login'">Login</button>
+        <button :class="['cubist-btn', auth.tab==='register' ? 'active' : 'inactive']" @click="auth.tab='register'">Register</button>
       </div>
       <transition name="fade">
         <div>
@@ -35,33 +35,37 @@
         </div>
       </transition>
       <p class="status cubist-status">{{ auth.status }}</p>
-      <div v-if="auth.showWebcamPrompt" class="webcam-prompt cubist-warning">
-        <p>Please allow webcam and/or microphone access for face/catchphrase authentication.</p>
-      </div>
-      <AuthWebcamModal v-if="auth.showWebcamModal"
-        :show="auth.showWebcamModal"
-        :registerStep="auth.registerStep"
-        @close="auth.closeWebcamModal"
-        @capture="auth.captureImage"
-        :ageDetected="auth.ageDetected"
-        :detectedAge="auth.detectedAge"
-        :idDetected="auth.idDetected"
-      />
-      <AuthCatchphraseModal v-if="auth.showVocalModal"
-        :show="auth.showVocalModal"
-        :catchphraseWords="auth.catchphraseWords"
-        :catchphraseRecordings="auth.catchphraseRecordings"
-        :recording="auth.recording"
-        :recordCountdown="auth.recordCountdown"
-        :status="auth.status"
-        :statusColor="auth.statusColor"
-        @generate-catchphrase="auth.generateCatchphraseWords"
-        @start-recording="auth.startCatchphraseRecording"
-        @delete-recording="auth.deleteCatchphraseRecording"
-        @submit="auth.submitVocal"
-        @close="auth.closeVocalModal"
-      />
     </div>
+
+    <!-- Webcam and Catchphrase Modals -->
+    <div v-if="auth.showWebcamPrompt" class="webcam-prompt cubist-warning">
+      <p>Please allow webcam and/or microphone access for face/catchphrase authentication.</p>
+    </div>
+    <AuthWebcamModal v-if="auth.showWebcamModal"
+      :show="auth.showWebcamModal"
+      :registerStep="auth.registerStep"
+      @close="auth.closeWebcamModal"
+      @capture="auth.captureImage"
+      :ageDetected="auth.ageDetected"
+      :detectedAge="auth.detectedAge"
+      :idDetected="auth.idDetected"
+    />
+    <AuthCatchphraseModal v-if="auth.showVocalModal"
+      :show="auth.showVocalModal"
+      :catchphraseWords="auth.catchphraseWords"
+      :catchphraseRecordings="auth.catchphraseRecordings"
+      :recording="auth.recording"
+      :recordCountdown="auth.recordCountdown"
+      :status="auth.status"
+      :statusColor="auth.statusColor"
+      @generate-catchphrase="auth.generateCatchphraseWords"
+      @start-recording="auth.startCatchphraseRecording"
+      @delete-recording="auth.deleteCatchphraseRecording"
+      @submit="auth.submitVocal"
+      @close="auth.closeVocalModal"
+    />
+
+    <!-- Dashboard for logged-in users -->
     <div v-else-if="auth.loggedIn">
       <div class="dashboard cubist-card">
         <img src="/MyMark.svg" alt="MyMark Logo" class="logo dashboard-logo" />
@@ -95,8 +99,8 @@ import AuthWebcamModal from './AuthWebcamModal.vue';
 import AuthCatchphraseModal from './AuthCatchphraseModal.vue';
 const auth = useAuthStore();
 </script>
+
 <style scoped>
-/* Cubist palette and geometric style */
 body {
   background: #f5f5f5;
 }
@@ -152,15 +156,36 @@ body {
   display: flex;
   margin-bottom: 18px;
   gap: 0;
+  border-radius: 0;
+  border: none;
+  box-shadow: none;
 }
 .cubist-tabs .cubist-btn {
   flex: 1;
   border-radius: 0;
   margin: 0;
   border-right: none;
+  border-top: 2px solid #111;
+  border-bottom: 2px solid #111;
+  border-left: 2px solid #111;
+  background: #e0e0e0;
+  color: #111;
+  font-weight: bold;
+  font-size: 1.1em;
+  box-shadow: none;
+  transition: background 0.2s, color 0.2s;
 }
 .cubist-tabs .cubist-btn:last-child {
   border-right: 2px solid #111;
+}
+.cubist-btn.active {
+  background: #111;
+  color: #fff;
+  z-index: 1;
+}
+.cubist-btn.inactive {
+  background: #e0e0e0;
+  color: #111;
 }
 .cubist-form {
   display: flex;
@@ -251,59 +276,12 @@ body {
   border-radius: 0;
   box-shadow: 2px 2px 0 #bbb;
 }
-.nav-tooltip {
-  position: absolute;
-  left: 50%;
-  top: 120%;
-  transform: translateX(-50%);
-  background: #fff;
-  color: #333;
-  padding: 6px 12px;
-  border-radius: 6px;
-  box-shadow: 0 2px 8px #0002;
-  white-space: nowrap;
-  font-size: 0.95em;
-  z-index: 10;
-}
 .fade-enter-active, .fade-leave-active {
   transition: opacity 0.5s;
 }
 .fade-enter-from, .fade-leave-to {
   opacity: 0;
 }
-.id-btn {
-  background: #b3e5fc;
-  color: #111;
-  border: 2px solid #0288d1;
-}
-.face-btn {
-  background: #ffe082;
-  color: #111;
-  border: 2px solid #fbc02d;
-}
-.catchphrase-recording-indicator {
-  margin-top: 10px;
-  font-weight: bold;
-  color: #e53935;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.recording-dot {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  background: #e53935;
-  border-radius: 50%;
-  margin-right: 6px;
-  animation: blink 1s infinite;
-}
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
-}
-
-/* Responsive layout for mobile, tablet, desktop */
 .auth-root {
   min-height: 100vh;
   display: flex;

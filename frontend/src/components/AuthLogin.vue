@@ -25,7 +25,6 @@ const auth = useAuthStore();
 const catchphraseLogin = ref(false);
 const catchphraseRecordCount = ref(0);
 const recordings = ref([]);
-
 function toggleCatchphraseLogin() {
   catchphraseLogin.value = !catchphraseLogin.value;
   if (catchphraseLogin.value) {

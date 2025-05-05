@@ -1,5 +1,8 @@
 <template>
-  <div style="font-family:sans-serif;">
+  <div style="font-family:sans-serif; border: 4px solid red; min-height: 100vh;">
+    <div style="background: yellow; color: red; font-size: 1.5em; padding: 8px; text-align: center;">
+      [DEBUG] App.vue is rendering!
+    </div>
     <div class="navbar cubist-navbar">
       <img src="/MyMark.svg" alt="MyMark Logo" class="logo navbar-logo" />
       <div class="nav-links">

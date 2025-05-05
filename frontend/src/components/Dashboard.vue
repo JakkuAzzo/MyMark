@@ -77,11 +77,9 @@
 
 <script setup>
 import { ref, defineEmits } from 'vue';
-
 const showInfo = ref(false);
 const showResearch = ref(false);
 const emit = defineEmits(['updatePage']);
-
 function goToAuth() {
   emit("updatePage", "auth");
 }
@@ -99,8 +97,8 @@ function goToAuth() {
   background: rgba(255, 255, 255, 0.8);
   border: 4px solid #111;
   border-radius: 18px 0 18px 0;
-  box-shadow: 8px 8px 0 #bbb, 0 0 0 8px rgba(255,255,255,0.8) inset;
-  padding: 40px 32px;
+  box-shadow: 8px 8px 0 #bbb, 0 0 0 8px #fff inset;
+  padding: 40px 32px 32px 32px;
   margin: 40px auto;
   max-width: 520px;
   min-width: 320px;

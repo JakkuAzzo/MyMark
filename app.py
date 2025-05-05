@@ -713,8 +713,17 @@ def validateIDDocument(document_path):
         for word in keywords for candidate in text.lower().split()
     )
     has_keyword = len(found) >= 1 or fuzzy_found >= 2
-    print(f"[validateIDDocument] has_mrz={has_mrz}, has_keyword={has_keyword}")
-    return has_mrz or has_keyword
+    # --- NEW: Require a face in the document ---
+    try:
+        import face_recognition
+        img_arr = face_recognition.load_image_file(document_path)
+        faces = face_recognition.face_locations(img_arr)
+        has_face = len(faces) > 0
+    except Exception as e:
+        print("[validateIDDocument] face_recognition error:", e)
+        has_face = False
+    print(f"[validateIDDocument] has_mrz={has_mrz}, has_keyword={has_keyword}, has_face={has_face}")
+    return (has_mrz or has_keyword) and has_face
 
 @app.route('/api/check_db', methods=['GET'])
 def check_db():

@@ -1,15 +1,11 @@
 <template>
   <div class="cubist-card">
     <h2 class="cubist-title">Upload Image</h2>
-    <div v-if="error" class="cubist-status">{{ error }}</div>
-    <div v-else>
-      <form @submit.prevent="handleUpload" class="cubist-form">
-        <input type="file" @change="onFileChange" class="cubist-input" />
-        <input v-model="owner" placeholder="Owner" class="cubist-input" />
-        <button type="submit" class="cubist-btn">Upload & Watermark</button>
-      </form>
-      <div v-if="status" class="cubist-status">{{ status }}</div>
-    </div>
+    <input type="file" @change="onFileChange" class="cubist-input" />
+    <input v-model="owner" placeholder="Owner (username)" class="cubist-input" />
+    <button @click="uploadImage" class="cubist-btn">Upload</button>
+    <p class="cubist-status">{{ status }}</p>
+    <p v-if="error" class="cubist-status" style="color:red;">{{ error }}</p>
   </div>
 </template>
 
@@ -25,7 +21,7 @@ function onFileChange(e) {
   file.value = e.target.files[0];
 }
 
-async function handleUpload() {
+async function uploadImage() {
   if (!file.value || !owner.value) {
     status.value = 'Please select a file and enter owner.';
     return;
@@ -77,7 +73,6 @@ onMounted(async () => {
   max-width: 420px;
   min-width: 320px;
   text-align: center;
-  color: #111;
 }
 .cubist-title {
   font-family: 'Montserrat', 'Arial', sans-serif;
@@ -87,12 +82,6 @@ onMounted(async () => {
   margin-bottom: 18px;
   letter-spacing: 1px;
 }
-.cubist-form {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  margin-bottom: 16px;
-}
 .cubist-input {
   padding: 12px;
   border-radius: 0;
@@ -101,6 +90,7 @@ onMounted(async () => {
   background: #f5f5f5;
   color: #111;
   font-family: 'Montserrat', 'Arial', sans-serif;
+  margin-bottom: 12px;
 }
 .cubist-btn {
   background: #e0e0e0;
@@ -115,11 +105,6 @@ onMounted(async () => {
   transition: background 0.2s, color 0.2s, box-shadow 0.2s;
   cursor: pointer;
   position: relative;
-}
-.cubist-btn.active, .cubist-btn:hover {
-  background: #222;
-  color: #fff;
-  box-shadow: 2px 2px 0 #fff, 4px 4px 0 #222;
 }
 .cubist-status {
   color: #e53935;

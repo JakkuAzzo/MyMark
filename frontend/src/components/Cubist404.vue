@@ -1,91 +1,31 @@
 <template>
-  <div class="cubist-404-bg">
-    <div class="cubist-404-cube">
-      <div class="cube-face cube-front">4</div>
-      <div class="cube-face cube-back">0</div>
-      <div class="cube-face cube-top">4</div>
-      <div class="cube-face cube-bottom">?</div>
-      <div class="cube-face cube-left">🟦</div>
-      <div class="cube-face cube-right">🟨</div>
-    </div>
-    <div class="cubist-404-text">
-      <h1>404: Lost in the Cubist Multiverse</h1>
-      <p>
-        Oops! This page is as invisible as our watermarks.<br>
-        <span style="font-size:1.5em;">🧊</span> <b>Cube not found!</b> <span style="font-size:1.5em;">🧊</span><br>
-        <em>Maybe your image took a wrong turn on the blockchain?</em>
-      </p>
-      <button class="cubist-btn" @click="$emit('goHome')">Return to Dashboard</button>
-    </div>
+  <div class="cubist-card">
+    <h2 class="cubist-title">404 Not Found</h2>
+    <p>The page you are looking for does not exist.</p>
+    <button class="cubist-btn" @click="$emit('goHome')">Go Home</button>
   </div>
 </template>
-
 <script setup>
-// No script needed except for goHome event
 </script>
-
 <style scoped>
-.cubist-404-bg {
-  min-height: 100vh;
-  background: linear-gradient(135deg, #e0e0e0 0%, #b3e5fc 100%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  animation: bgmove 8s linear infinite alternate;
-}
-@keyframes bgmove {
-  0% { background-position: 0 0; }
-  100% { background-position: 100% 100%; }
-}
-.cubist-404-cube {
-  width: 120px;
-  height: 120px;
-  margin-bottom: 32px;
-  perspective: 600px;
-  position: relative;
-  animation: cube-spin 3s infinite linear;
-}
-@keyframes cube-spin {
-  0% { transform: rotateX(0deg) rotateY(0deg);}
-  100% { transform: rotateX(360deg) rotateY(360deg);}
-}
-.cube-face {
-  position: absolute;
-  width: 120px;
-  height: 120px;
+.cubist-card {
   background: #fff;
   border: 4px solid #111;
-  font-size: 4em;
-  font-family: 'Montserrat', 'Arial', sans-serif;
-  font-weight: bold;
-  color: #0288d1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 4px 4px 0 #bbb;
-  opacity: 0.95;
-}
-.cube-front  { transform: rotateY(0deg) translateZ(60px);}
-.cube-back   { transform: rotateY(180deg) translateZ(60px);}
-.cube-top    { transform: rotateX(90deg) translateZ(60px);}
-.cube-bottom { transform: rotateX(-90deg) translateZ(60px);}
-.cube-left   { transform: rotateY(-90deg) translateZ(60px);}
-.cube-right  { transform: rotateY(90deg) translateZ(60px);}
-.cubist-404-text {
+  border-radius: 18px 0 18px 0;
+  box-shadow: 8px 8px 0 #bbb, 0 0 0 8px #fff inset;
+  padding: 40px 32px 32px 32px;
+  margin: 40px auto;
+  max-width: 420px;
+  min-width: 320px;
   text-align: center;
-  margin-top: 24px;
 }
-.cubist-404-text h1 {
+.cubist-title {
   font-family: 'Montserrat', 'Arial', sans-serif;
-  font-size: 2.2em;
+  font-weight: 900;
+  font-size: 2em;
   color: #111;
-  margin-bottom: 12px;
-}
-.cubist-404-text p {
-  font-size: 1.2em;
-  color: #0288d1;
-  margin-bottom: 24px;
+  margin-bottom: 18px;
+  letter-spacing: 1px;
 }
 .cubist-btn {
   background: #e0e0e0;
@@ -100,9 +40,5 @@
   transition: background 0.2s, color 0.2s, box-shadow 0.2s;
   cursor: pointer;
   position: relative;
-}
-.cubist-btn:hover {
-  background: #0288d1;
-  color: #fff;
 }
 </style>
