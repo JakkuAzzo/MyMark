@@ -5,73 +5,34 @@
 //  Created by Nathan Brown-Bennett on 5/12/25.
 //
 
-import AppIntents
 import SwiftUI
 import WidgetKit
 
-struct MyMarkWidgetExtensionControl: ControlWidget {
-    static let kind: String = "nathanbrownbennett.MyMarkDemo.MyMarkWidgetExtension"
+struct MyMarkWidgetEntryView: View {
+    let entry: MyMarkEntry
 
-    var body: some ControlWidgetConfiguration {
-        AppIntentControlConfiguration(
-            kind: Self.kind,
-            provider: Provider()
-        ) { value in
-            ControlWidgetToggle(
-                "Start Timer",
-                isOn: value.isRunning,
-                action: StartTimerIntent(value.name)
-            ) { isRunning in
-                Label(isRunning ? "On" : "Off", systemImage: "timer")
+    var body: some View {
+        HStack(spacing: 8) {
+            Image("MyMark")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 32, height: 32)
+
+            VStack(alignment: .leading) {
+                if entry.totalProcessed == 0 {
+                    Text("Syncing…")
+                        .font(.headline)
+                } else {
+                    Text("Processed: \(entry.totalProcessed)")
+                        .font(.headline)
+                    Text("Matches: \(entry.potentialMatches)")
+                        .font(.subheadline)
+                }
             }
         }
-        .displayName("Timer")
-        .description("A an example control that runs a timer.")
+        .padding()
     }
 }
 
-extension MyMarkWidgetExtensionControl {
-    struct Value {
-        var isRunning: Bool
-        var name: String
-    }
-
-    struct Provider: AppIntentControlValueProvider {
-        func previewValue(configuration: TimerConfiguration) -> Value {
-            MyMarkWidgetExtensionControl.Value(isRunning: false, name: configuration.timerName)
-        }
-
-        func currentValue(configuration: TimerConfiguration) async throws -> Value {
-            let isRunning = true // Check if the timer is running
-            return MyMarkWidgetExtensionControl.Value(isRunning: isRunning, name: configuration.timerName)
-        }
-    }
-}
-
-struct TimerConfiguration: ControlConfigurationIntent {
-    static let title: LocalizedStringResource = "Timer Name Configuration"
-
-    @Parameter(title: "Timer Name", default: "Timer")
-    var timerName: String
-}
-
-struct StartTimerIntent: SetValueIntent {
-    static let title: LocalizedStringResource = "Start a timer"
-
-    @Parameter(title: "Timer Name")
-    var name: String
-
-    @Parameter(title: "Timer is running")
-    var value: Bool
-
-    init() {}
-
-    init(_ name: String) {
-        self.name = name
-    }
-
-    func perform() async throws -> some IntentResult {
-        // Start the timer…
-        return .result()
-    }
-}
+// If you have any widget control logic (e.g., timeline reload triggers), place it here.
+// For now, no functions from Widget.swift need to be moved here unless you have custom reload logic.

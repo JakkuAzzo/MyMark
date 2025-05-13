@@ -8,11 +8,13 @@
 import WidgetKit
 import SwiftUI
 
-@main
-struct MyMarkWidgetExtensionBundle: WidgetBundle {
-    var body: some Widget {
-        MyMarkWidgetExtension()
-        MyMarkWidgetExtensionControl()
-        MyMarkWidgetExtensionLiveActivity()
-    }
-}
+/** @main
+ struct MyMarkWidgetExtensionBundle: WidgetBundle {
+ var body: some Widget {
+ MyMarkWidgetExtension()
+ MyMarkWidgetExtensionControl()
+ MyMarkWidgetExtensionLiveActivity()
+ }
+ }
+ 
+ **/

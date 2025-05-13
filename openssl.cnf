@@ -5,7 +5,7 @@ x509_extensions    = v3_req
 prompt             = no
 
 [req_distinguished_name]
-CN = 127.0.2.2
+CN = 192.168.0.100
 
 [v3_req]
 keyUsage = digitalSignature, keyEncipherment
@@ -15,6 +15,4 @@ subjectAltName = @alt_names
 [alt_names]
 DNS.1 = localhost
 IP.1 = 127.0.0.1
-IP.2 = 127.0.2.2
-IP.3 = 127.0.2.3
-IP.4 = 10.154.92.142
+IP.2 = 192.168.0.100

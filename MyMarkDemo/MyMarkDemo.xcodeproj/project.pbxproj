@@ -6,6 +6,12 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		7E7B71242DD2454C002A80F4 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7E7B71232DD2454C002A80F4 /* WidgetKit.framework */; };
+		7E7B71262DD2454C002A80F4 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7E7B71252DD2454C002A80F4 /* SwiftUI.framework */; };
+		7E7B71372DD2454F002A80F4 /* MyMarkWidgetExtensionExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 7E7B71212DD2454C002A80F4 /* MyMarkWidgetExtensionExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		7E7B70FF2DD24370002A80F4 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -21,13 +27,47 @@
 			remoteGlobalIDString = 7E7B70EE2DD2436E002A80F4;
 			remoteInfo = MyMarkDemo;
 		};
+		7E7B71352DD2454F002A80F4 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 7E7B70E72DD2436E002A80F4 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7E7B71202DD2454C002A80F4;
+			remoteInfo = MyMarkWidgetExtensionExtension;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		7E7B713C2DD2454F002A80F4 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				7E7B71372DD2454F002A80F4 /* MyMarkWidgetExtensionExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		7E7B70EF2DD2436E002A80F4 /* MyMarkDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MyMarkDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7E7B70FE2DD24370002A80F4 /* MyMarkDemoTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MyMarkDemoTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		7E7B71082DD24370002A80F4 /* MyMarkDemoUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MyMarkDemoUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		7E7B71212DD2454C002A80F4 /* MyMarkWidgetExtensionExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MyMarkWidgetExtensionExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		7E7B71232DD2454C002A80F4 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		7E7B71252DD2454C002A80F4 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		7E7B71382DD2454F002A80F4 /* Exceptions for "MyMarkWidgetExtension" folder in "MyMarkWidgetExtensionExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 7E7B71202DD2454C002A80F4 /* MyMarkWidgetExtensionExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		7E7B70F12DD2436E002A80F4 /* MyMarkDemo */ = {
@@ -43,6 +83,14 @@
 		7E7B710B2DD24370002A80F4 /* MyMarkDemoUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = MyMarkDemoUITests;
+			sourceTree = "<group>";
+		};
+		7E7B71272DD2454C002A80F4 /* MyMarkWidgetExtension */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				7E7B71382DD2454F002A80F4 /* Exceptions for "MyMarkWidgetExtension" folder in "MyMarkWidgetExtensionExtension" target */,
+			);
+			path = MyMarkWidgetExtension;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -69,6 +117,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		7E7B711E2DD2454C002A80F4 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7E7B71262DD2454C002A80F4 /* SwiftUI.framework in Frameworks */,
+				7E7B71242DD2454C002A80F4 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -78,6 +135,8 @@
 				7E7B70F12DD2436E002A80F4 /* MyMarkDemo */,
 				7E7B71012DD24370002A80F4 /* MyMarkDemoTests */,
 				7E7B710B2DD24370002A80F4 /* MyMarkDemoUITests */,
+				7E7B71272DD2454C002A80F4 /* MyMarkWidgetExtension */,
+				7E7B71222DD2454C002A80F4 /* Frameworks */,
 				7E7B70F02DD2436E002A80F4 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -88,8 +147,18 @@
 				7E7B70EF2DD2436E002A80F4 /* MyMarkDemo.app */,
 				7E7B70FE2DD24370002A80F4 /* MyMarkDemoTests.xctest */,
 				7E7B71082DD24370002A80F4 /* MyMarkDemoUITests.xctest */,
+				7E7B71212DD2454C002A80F4 /* MyMarkWidgetExtensionExtension.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		7E7B71222DD2454C002A80F4 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				7E7B71232DD2454C002A80F4 /* WidgetKit.framework */,
+				7E7B71252DD2454C002A80F4 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -102,10 +171,12 @@
 				7E7B70EB2DD2436E002A80F4 /* Sources */,
 				7E7B70EC2DD2436E002A80F4 /* Frameworks */,
 				7E7B70ED2DD2436E002A80F4 /* Resources */,
+				7E7B713C2DD2454F002A80F4 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				7E7B71362DD2454F002A80F4 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				7E7B70F12DD2436E002A80F4 /* MyMarkDemo */,
@@ -163,6 +234,28 @@
 			productReference = 7E7B71082DD24370002A80F4 /* MyMarkDemoUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		7E7B71202DD2454C002A80F4 /* MyMarkWidgetExtensionExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7E7B71392DD2454F002A80F4 /* Build configuration list for PBXNativeTarget "MyMarkWidgetExtensionExtension" */;
+			buildPhases = (
+				7E7B711D2DD2454C002A80F4 /* Sources */,
+				7E7B711E2DD2454C002A80F4 /* Frameworks */,
+				7E7B711F2DD2454C002A80F4 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				7E7B71272DD2454C002A80F4 /* MyMarkWidgetExtension */,
+			);
+			name = MyMarkWidgetExtensionExtension;
+			packageProductDependencies = (
+			);
+			productName = MyMarkWidgetExtensionExtension;
+			productReference = 7E7B71212DD2454C002A80F4 /* MyMarkWidgetExtensionExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -184,6 +277,9 @@
 						CreatedOnToolsVersion = 16.3;
 						TestTargetID = 7E7B70EE2DD2436E002A80F4;
 					};
+					7E7B71202DD2454C002A80F4 = {
+						CreatedOnToolsVersion = 16.3;
+					};
 				};
 			};
 			buildConfigurationList = 7E7B70EA2DD2436E002A80F4 /* Build configuration list for PBXProject "MyMarkDemo" */;
@@ -203,6 +299,7 @@
 				7E7B70EE2DD2436E002A80F4 /* MyMarkDemo */,
 				7E7B70FD2DD24370002A80F4 /* MyMarkDemoTests */,
 				7E7B71072DD24370002A80F4 /* MyMarkDemoUITests */,
+				7E7B71202DD2454C002A80F4 /* MyMarkWidgetExtensionExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -223,6 +320,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		7E7B71062DD24370002A80F4 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7E7B711F2DD2454C002A80F4 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -253,6 +357,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		7E7B711D2DD2454C002A80F4 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -265,6 +376,11 @@
 			isa = PBXTargetDependency;
 			target = 7E7B70EE2DD2436E002A80F4 /* MyMarkDemo */;
 			targetProxy = 7E7B71092DD24370002A80F4 /* PBXContainerItemProxy */;
+		};
+		7E7B71362DD2454F002A80F4 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7E7B71202DD2454C002A80F4 /* MyMarkWidgetExtensionExtension */;
+			targetProxy = 7E7B71352DD2454F002A80F4 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -510,6 +626,58 @@
 			};
 			name = Release;
 		};
+		7E7B713A2DD2454F002A80F4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MyMarkWidgetExtension/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = MyMarkWidgetExtension;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = nathanbrownbennett.MyMarkDemo.MyMarkWidgetExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		7E7B713B2DD2454F002A80F4 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MyMarkWidgetExtension/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = MyMarkWidgetExtension;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = nathanbrownbennett.MyMarkDemo.MyMarkWidgetExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -545,6 +713,15 @@
 			buildConfigurations = (
 				7E7B71192DD24370002A80F4 /* Debug */,
 				7E7B711A2DD24370002A80F4 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		7E7B71392DD2454F002A80F4 /* Build configuration list for PBXNativeTarget "MyMarkWidgetExtensionExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7E7B713A2DD2454F002A80F4 /* Debug */,
+				7E7B713B2DD2454F002A80F4 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

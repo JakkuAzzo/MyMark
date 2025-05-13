@@ -8,81 +8,90 @@
 import WidgetKit
 import SwiftUI
 
-struct Provider: AppIntentTimelineProvider {
-    func placeholder(in context: Context) -> SimpleEntry {
-        SimpleEntry(date: Date(), configuration: ConfigurationAppIntent())
-    }
-
-    func snapshot(for configuration: ConfigurationAppIntent, in context: Context) async -> SimpleEntry {
-        SimpleEntry(date: Date(), configuration: configuration)
-    }
-    
-    func timeline(for configuration: ConfigurationAppIntent, in context: Context) async -> Timeline<SimpleEntry> {
-        var entries: [SimpleEntry] = []
-
-        // Generate a timeline consisting of five entries an hour apart, starting from the current date.
-        let currentDate = Date()
-        for hourOffset in 0 ..< 5 {
-            let entryDate = Calendar.current.date(byAdding: .hour, value: hourOffset, to: currentDate)!
-            let entry = SimpleEntry(date: entryDate, configuration: configuration)
-            entries.append(entry)
-        }
-
-        return Timeline(entries: entries, policy: .atEnd)
-    }
-
-//    func relevances() async -> WidgetRelevances<ConfigurationAppIntent> {
-//        // Generate a list containing the contexts this widget is relevant in.
-//    }
-}
-
-struct SimpleEntry: TimelineEntry {
+struct MyMarkEntry: TimelineEntry {
     let date: Date
-    let configuration: ConfigurationAppIntent
+    let isLoggedIn: Bool
+    let stats: Stats?
+    let hasNew: Bool
 }
 
-struct MyMarkWidgetExtensionEntryView : View {
-    var entry: Provider.Entry
+struct Stats {
+    let totalLibrary: Int
+    let totalDemoSites: Int
+    let verifiedMatches: Int
+    let commonSite: String
+}
+
+struct MyMarkProvider: TimelineProvider {
+    func placeholder(in context: Context) -> MyMarkEntry {
+        MyMarkEntry(date: Date(), isLoggedIn: false, stats: nil, hasNew: false)
+    }
+
+    func getSnapshot(in context: Context, completion: @escaping (MyMarkEntry) -> ()) {
+        completion(MyMarkEntry(date: Date(), isLoggedIn: false, stats: nil, hasNew: false))
+    }
+
+    func getTimeline(in context: Context, completion: @escaping (Timeline<MyMarkEntry>) -> ()) {
+        let defaults = UserDefaults(suiteName: "group.nathanbrownbennett.MyMarkDemo")
+        let isLoggedIn = defaults?.bool(forKey: "isLoggedIn") ?? false
+        let hasNew = defaults?.bool(forKey: "hasNew") ?? false
+        var stats: Stats? = nil
+        if isLoggedIn {
+            stats = Stats(
+                totalLibrary: defaults?.integer(forKey: "totalLibrary") ?? 0,
+                totalDemoSites: defaults?.integer(forKey: "totalDemoSites") ?? 0,
+                verifiedMatches: defaults?.integer(forKey: "verifiedMatches") ?? 0,
+                commonSite: defaults?.string(forKey: "commonSite") ?? "-"
+            )
+        }
+        let entry = MyMarkEntry(date: Date(), isLoggedIn: isLoggedIn, stats: stats, hasNew: hasNew)
+        completion(Timeline(entries: [entry], policy: .after(Date().addingTimeInterval(60*15))))
+    }
+}
+
+struct MyMarkWidgetEntryView : View {
+    var entry: MyMarkEntry
 
     var body: some View {
-        VStack {
-            Text("Time:")
-            Text(entry.date, style: .time)
-
-            Text("Favorite Emoji:")
-            Text(entry.configuration.favoriteEmoji)
+        ZStack {
+            Color(.systemGray6)
+            VStack(spacing: 8) {
+                Image("BackgroundImage")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 60, height: 60)
+                    .opacity(0.15)
+                if !entry.isLoggedIn {
+                    Text("Sign in to be updated")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                } else if let stats = entry.stats {
+                    if entry.hasNew {
+                        Text("⚠️ New matches found!")
+                            .font(.headline)
+                            .foregroundColor(.red)
+                    }
+                    Text("Library: \(stats.totalLibrary)")
+                    Text("Sites: \(stats.totalDemoSites)")
+                    Text("Verified: \(stats.verifiedMatches)")
+                    Text("Common: \(stats.commonSite)")
+                }
+            }
+            .padding()
         }
     }
 }
 
-struct MyMarkWidgetExtension: Widget {
-    let kind: String = "MyMarkWidgetExtension"
+@main
+struct MyMarkWidget: Widget {
+    let kind: String = "MyMarkWidget"
 
     var body: some WidgetConfiguration {
-        AppIntentConfiguration(kind: kind, intent: ConfigurationAppIntent.self, provider: Provider()) { entry in
-            MyMarkWidgetExtensionEntryView(entry: entry)
-                .containerBackground(.fill.tertiary, for: .widget)
+        StaticConfiguration(kind: kind, provider: MyMarkProvider()) { entry in
+            MyMarkWidgetEntryView(entry: entry)
         }
+        .configurationDisplayName("MyMark Status")
+        .description("See your MyMark stats and alerts.")
+        .supportedFamilies([.systemSmall, .systemMedium])
     }
-}
-
-extension ConfigurationAppIntent {
-    fileprivate static var smiley: ConfigurationAppIntent {
-        let intent = ConfigurationAppIntent()
-        intent.favoriteEmoji = "😀"
-        return intent
-    }
-    
-    fileprivate static var starEyes: ConfigurationAppIntent {
-        let intent = ConfigurationAppIntent()
-        intent.favoriteEmoji = "🤩"
-        return intent
-    }
-}
-
-#Preview(as: .systemSmall) {
-    MyMarkWidgetExtension()
-} timeline: {
-    SimpleEntry(date: .now, configuration: .smiley)
-    SimpleEntry(date: .now, configuration: .starEyes)
 }
