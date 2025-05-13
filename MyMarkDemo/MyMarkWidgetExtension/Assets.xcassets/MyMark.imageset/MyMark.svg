@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="100%" height="100%" viewBox="0 0 1000 1000" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linecap:round;stroke-miterlimit:1.5;">
+    <rect x="0" y="0" width="1000" height="1000"/>
+    <g transform="matrix(1.71444,0,0,1.71444,-149.561,54.6187)">
+        <rect x="121.56" y="19.564" width="504.587" height="480.436" style="stroke:white;stroke-width:17.93px;"/>
+    </g>
+    <g transform="matrix(0.840559,0,0,1.13968,-121.477,-13.8673)">
+        <g transform="matrix(892.904,0,0,892.904,804.065,730.573)">
+        </g>
+        <text x="266.055px" y="730.573px" style="font-family:'LucidaConsole', 'Lucida Console', monospace;font-stretch:semi-condensed;font-size:892.904px;fill:white;">M</text>
+    </g>
+    <g transform="matrix(4.53633,0,0,1.08729,-1562.43,-514.695)">
+        <rect x="454.648" y="640.069" width="80.166" height="48.901" style="fill:white;"/>
+    </g>
+    <g transform="matrix(4.86939e-16,7.95232,-1.20256,7.36354e-17,1633.38,-3434.26)">
+        <rect x="454.648" y="640.069" width="80.166" height="48.901" style="fill:white;"/>
+    </g>
+    <g transform="matrix(4.77422,0,0,0.799126,-1710.95,268.18)">
+        <rect x="454.648" y="640.069" width="80.166" height="48.901" style="fill:white;"/>
+    </g>
+    <g transform="matrix(1.42759,0,0,1.50612,-321.791,-213.802)">
+        <g transform="matrix(339.551,0,0,339.551,794.264,599.692)">
+        </g>
+        <text x="589.671px" y="599.692px" style="font-family:'LucidaConsole', 'Lucida Console', monospace;font-stretch:semi-condensed;font-size:339.551px;fill:white;">2</text>
+    </g>
+</svg>

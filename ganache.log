@@ -69,3 +69,9 @@ web3_clientVersion
 web3_clientVersion
 web3_clientVersion
 web3_clientVersion
+
+Received shutdown signal: SIGTERM
+Shutting down…
+(node:89451) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 close listeners added to [Server]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+(Use `node --trace-warnings ...` to show where the warning was created)
+Server has been shut down
