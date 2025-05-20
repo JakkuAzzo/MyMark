@@ -1,6 +1,6 @@
 # MyMark
 
-MyMark is a decentralized, personalized fingerprinting and detection tool designed to protect digital media against unauthorized use. It leverages invisible watermarking, perceptual hashing, and blockchain to allow content creators to mark their images and prove ownership in a tamper-resistant, trustless environment.
+MyMark is a decentralized, personalized fingerprinting and detection tool designed to protect digital media against unauthorized use. It leverages invisible watermarking, perceptual hashing, and blockchain to allow everybody to mark their images, find all usage of their image / documents and prove ownership in a tamper-resistant, trustless environment.
 
 ## Project Aims & Need
 
